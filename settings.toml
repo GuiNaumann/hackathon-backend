@@ -3,7 +3,8 @@ port = "8080"
 environment = "development"
 
 [database]
-host = "localhost"
+#host = "localhost"
+host = "ec2-18-217-202-4.us-east-2.compute.amazonaws.com"
 port = "5432"
 user = "postgres"
 password = "postgres"
