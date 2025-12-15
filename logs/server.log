@@ -66,3 +66,9 @@
 2025/12/15 13:40:19 main.go:81: 🚀 Servidor rodando na porta 8080
 2025/12/15 14:05:49 main.go:89: ✅ Servidor encerrado
 2025/12/15 14:05:49 setup.go:80: ✅ Conexão com banco de dados fechada
+2025/12/15 14:13:51 main.go:49: Servidor iniciado com sucesso!
+2025/12/15 14:13:51 settings_loader.go:82: ✅ Configurações carregadas com sucesso
+2025/12/15 14:13:51 setup.go:25: 🔧 Iniciando setup da aplicação...
+2025/12/15 14:13:52 database.go:31: ✅ Conexão com banco de dados estabelecida
+2025/12/15 14:13:52 setup.go:67: ✅ Setup concluído com sucesso
+2025/12/15 14:13:52 main.go:81: 🚀 Servidor rodando na porta 8080
