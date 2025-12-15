@@ -18,3 +18,19 @@
 2025/12/15 10:30:04 main.go:79: 🚀 Servidor rodando na porta 8080
 2025/12/15 10:30:13 main.go:87: ✅ Servidor encerrado
 2025/12/15 10:30:13 setup.go:64: ✅ Conexão com banco de dados fechada
+2025/12/15 10:37:21 main.go:48: Servidor iniciado com sucesso!
+2025/12/15 10:37:21 settings_loader.go:82: ✅ Configurações carregadas com sucesso
+2025/12/15 10:37:21 setup.go:23: 🔧 Iniciando setup da aplicação...
+2025/12/15 10:37:22 database.go:31: ✅ Conexão com banco de dados estabelecida
+2025/12/15 10:37:22 setup.go:51: ✅ Setup concluído com sucesso
+2025/12/15 10:37:22 main.go:79: 🚀 Servidor rodando na porta 8080
+2025/12/15 10:51:52 main.go:87: ✅ Servidor encerrado
+2025/12/15 10:51:52 setup.go:64: ✅ Conexão com banco de dados fechada
+2025/12/15 10:57:20 main.go:48: Servidor iniciado com sucesso!
+2025/12/15 10:57:20 settings_loader.go:82: ✅ Configurações carregadas com sucesso
+2025/12/15 10:57:20 setup.go:24: 🔧 Iniciando setup da aplicação...
+2025/12/15 10:57:21 database.go:31: ✅ Conexão com banco de dados estabelecida
+2025/12/15 10:57:21 setup.go:63: ✅ Setup concluído com sucesso
+2025/12/15 10:57:21 main.go:79: 🚀 Servidor rodando na porta 8080
+2025/12/15 10:57:27 main.go:87: ✅ Servidor encerrado
+2025/12/15 10:57:27 setup.go:78: ✅ Conexão com banco de dados fechada
