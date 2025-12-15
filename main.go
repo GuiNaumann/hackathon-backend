@@ -54,6 +54,7 @@ func main() {
 			"http://localhost:3000",
 			"http://localhost:8080",
 			"http://localhost:8081",
+			"http://localhost:5173",
 		},
 		AllowedMethods:   []string{"POST", "GET", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
