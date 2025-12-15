@@ -1,0 +1,34 @@
+[app]
+port = "8080"
+environment = "development"
+
+[database]
+host = "localhost"
+port = "5432"
+user = "postgres"
+password = "postgres"
+dbname = "hackathon_db"
+sslmode = "disable"
+max_open_conns = 25
+max_idle_conns = 5
+conn_max_lifetime = 300
+
+[security]
+cookie_encryption_key = "qN6s8veqEPaMIbIWnaF5D5rh5DyREbPumKx4BiZTGOk="
+jwt_secret = "2vYspjkwDmYnueR9lmXptXXOzeZUrpkW5mZIW6QwDGk="
+cookie_domain = "localhost"
+cookie_secure = false
+cookie_http_only = true
+
+[smtp]
+host = "smtp.gmail.com"
+port = 587
+username = ""
+password = ""
+from_email = "noreply@hackathon.com"
+from_name = "Hackathon Backend"
+
+[storage]
+root_path = "./storage"
+uploads_path = "./storage/uploads"
+temp_path = "./storage/temp"
