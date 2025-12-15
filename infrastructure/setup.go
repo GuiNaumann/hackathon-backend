@@ -15,17 +15,19 @@ import (
 )
 
 type SetupConfig struct {
-	DB                   *sql.DB
-	Settings             *settings_loader.SettingsLoader
-	AuthRepository       *repository_impl.AuthRepositoryImpl
-	PermRepository       *repositories.PermissionRepositoryImpl
-	InitiativeRepository *repository_impl.InitiativeRepositoryImpl
-	CommentRepository    *repository_impl.CommentRepositoryImpl
-	AuthUseCase          *usecase_impl.AuthUseCaseImpl
-	PermissionUseCase    *usecase_impl.PermissionUseCaseImpl
-	UserCrudUseCase      *usecase_impl.UserCrudUseCaseImpl
-	InitiativeUseCase    *usecase_impl.InitiativeUseCaseImpl
-	CommentUseCase       *usecase_impl.CommentUseCaseImpl
+	DB                          *sql.DB
+	Settings                    *settings_loader.SettingsLoader
+	AuthRepository              *repository_impl.AuthRepositoryImpl
+	PermRepository              *repositories.PermissionRepositoryImpl
+	InitiativeRepository        *repository_impl.InitiativeRepositoryImpl
+	CommentRepository           *repository_impl.CommentRepositoryImpl
+	AuthUseCase                 *usecase_impl.AuthUseCaseImpl
+	PermissionUseCase           *usecase_impl.PermissionUseCaseImpl
+	UserCrudUseCase             *usecase_impl.UserCrudUseCaseImpl
+	InitiativeUseCase           *usecase_impl.InitiativeUseCaseImpl
+	CommentUseCase              *usecase_impl.CommentUseCaseImpl
+	InitiativeHistoryRepository *repository_impl.InitiativeHistoryRepositoryImpl
+	InitiativeHistoryUseCase    *usecase_impl.InitiativeHistoryUseCaseImpl
 }
 
 func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*SetupConfig, error) {
@@ -42,6 +44,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	permRepository := repositories.NewPermissionRepositoryImpl(db)
 	initiativeRepository := repository_impl.NewInitiativeRepositoryImpl(db)
 	commentRepository := repository_impl.NewCommentRepositoryImpl(db)
+	initiativeHistoryRepository := repository_impl.NewInitiativeHistoryRepositoryImpl(db)
 
 	// 3. Inicializar UseCases
 	authUseCase := usecase_impl.NewAuthUseCaseImpl(authRepository, settings)
@@ -49,12 +52,13 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	userCrudUseCase := usecase_impl.NewUserCrudUseCaseImpl(authRepository, permRepository)
 	initiativeUseCase := usecase_impl.NewInitiativeUseCaseImpl(initiativeRepository, permRepository)
 	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
+	initiativeHistoryUseCase := usecase_impl.NewInitiativeHistoryUseCaseImpl(initiativeHistoryRepository)
 
 	// 4. Inicializar Módulos HTTP
 	authModule := module_impl.NewAuthModule(authUseCase, settings)
 	permModule := module_impl.NewPermissionModule(permUseCase)
 	userCrudModule := module_impl.NewUserCrudModule(userCrudUseCase)
-	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase)
+	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase, initiativeHistoryUseCase)
 	commentModule := module_impl.NewCommentModule(commentUseCase)
 	healthModule := module_impl.NewHealthModule()
 

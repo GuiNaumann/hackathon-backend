@@ -13,12 +13,14 @@ import (
 )
 
 type InitiativeModule struct {
-	initiativeUseCase usecases.InitiativeUseCase
+	initiativeUseCase        usecases.InitiativeUseCase
+	initiativeHistoryUseCase usecases.InitiativeHistoryUseCase
 }
 
-func NewInitiativeModule(initiativeUseCase usecases.InitiativeUseCase) *InitiativeModule {
+func NewInitiativeModule(initiativeUseCase usecases.InitiativeUseCase, historyUseCase usecases.InitiativeHistoryUseCase) *InitiativeModule {
 	return &InitiativeModule{
-		initiativeUseCase: initiativeUseCase,
+		initiativeUseCase:        initiativeUseCase,
+		initiativeHistoryUseCase: historyUseCase,
 	}
 }
 
@@ -29,6 +31,7 @@ func (m *InitiativeModule) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/initiatives/{id}", m.UpdateInitiative).Methods("PUT")
 	router.HandleFunc("/initiatives/{id}", m.DeleteInitiative).Methods("DELETE")
 	router.HandleFunc("/initiatives/{id}/status", m.ChangeStatus).Methods("PATCH")
+	router.HandleFunc("/initiatives/{id}/history", m.GetHistory).Methods("GET") // NOVO
 	router.HandleFunc("/my-initiatives", m.GetMyInitiatives).Methods("GET")
 }
 
@@ -215,5 +218,28 @@ func (m *InitiativeModule) GetMyInitiatives(w http.ResponseWriter, r *http.Reque
 		"success": true,
 		"data":    initiatives,
 		"count":   len(initiatives),
+	})
+}
+
+// Adicionar o handler:
+func (m *InitiativeModule) GetHistory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		http_error.BadRequest(w, "ID inválido")
+		return
+	}
+
+	history, err := m.initiativeHistoryUseCase.GetHistory(r.Context(), id)
+	if err != nil {
+		http_error.InternalServerError(w, "Erro ao buscar histórico")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    history,
+		"count":   len(history),
 	})
 }

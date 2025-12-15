@@ -48,7 +48,7 @@ func (r *PermissionRepositoryImpl) HasPermission(ctx context.Context, userID int
 	query := `
 		SELECT utp.endpoint
 		FROM user_type_permissions utp
-		INNER JOIN type_user tu ON tu.user_type_id = utp. user_type_id
+		INNER JOIN type_user tu ON tu.user_type_id = utp.user_type_id
 		WHERE tu.user_id = $1
 		AND utp.method = $2
 	`

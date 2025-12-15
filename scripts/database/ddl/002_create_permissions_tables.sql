@@ -10,7 +10,7 @@ INSERT INTO user_type (name, description) VALUES
 INSERT INTO type_user (user_id, user_type_id)
 SELECT u.id, ut.id
 FROM users u, user_type ut
-WHERE u.email = 'admin@hackathon.com' AND ut. name = 'admin'
+WHERE u.email = 'admin@hackathon.com' AND ut.name = 'admin'
     ON CONFLICT DO NOTHING;
 
 -- Configurar permissões para admin (acesso total aos exemplos)

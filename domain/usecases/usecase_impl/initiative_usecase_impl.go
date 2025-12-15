@@ -200,7 +200,8 @@ func (uc *InitiativeUseCaseImpl) ChangeStatus(ctx context.Context, initiativeID 
 		return errors.New("status inválido")
 	}
 
-	return uc.initiativeRepo.ChangeStatus(ctx, initiativeID, req.Status, req.Reason)
+	// Usar o método com userID para registrar corretamente no histórico
+	return uc.initiativeRepo.ChangeStatusWithUser(ctx, initiativeID, req.Status, req.Reason, userID)
 }
 
 func (uc *InitiativeUseCaseImpl) GetMyInitiatives(ctx context.Context, userID int64) ([]*entities.Initiative, error) {

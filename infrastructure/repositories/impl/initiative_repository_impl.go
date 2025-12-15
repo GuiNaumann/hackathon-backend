@@ -9,11 +9,15 @@ import (
 )
 
 type InitiativeRepositoryImpl struct {
-	db *sql.DB
+	db          *sql.DB
+	historyRepo *InitiativeHistoryRepositoryImpl
 }
 
 func NewInitiativeRepositoryImpl(db *sql.DB) *InitiativeRepositoryImpl {
-	return &InitiativeRepositoryImpl{db: db}
+	return &InitiativeRepositoryImpl{
+		db:          db,
+		historyRepo: NewInitiativeHistoryRepositoryImpl(db),
+	}
 }
 
 func (r *InitiativeRepositoryImpl) Create(ctx context.Context, initiative *entities.Initiative) error {
@@ -23,7 +27,7 @@ func (r *InitiativeRepositoryImpl) Create(ctx context.Context, initiative *entit
 		RETURNING id, created_at, updated_at
 	`
 
-	return r.db.QueryRowContext(ctx, query,
+	err := r.db.QueryRowContext(ctx, query,
 		initiative.Title,
 		initiative.Description,
 		initiative.Benefits,
@@ -34,6 +38,21 @@ func (r *InitiativeRepositoryImpl) Create(ctx context.Context, initiative *entit
 		initiative.OwnerID,
 		initiative.Deadline,
 	).Scan(&initiative.ID, &initiative.CreatedAt, &initiative.UpdatedAt)
+
+	if err != nil {
+		return err
+	}
+
+	// Registrar no histórico:  criação da iniciativa
+	history := &entities.InitiativeHistory{
+		InitiativeID: initiative.ID,
+		UserID:       initiative.OwnerID,
+		OldStatus:    "Rascunho",
+		NewStatus:    initiative.Status,
+		Reason:       "Iniciativa criada",
+	}
+
+	return r.historyRepo.Create(ctx, history)
 }
 
 func (r *InitiativeRepositoryImpl) Update(ctx context.Context, initiative *entities.Initiative) error {
@@ -107,7 +126,6 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 	var args []interface{}
 	argCount := 1
 
-	// Aplicar filtros dinamicamente
 	if filter != nil {
 		if filter.Search != "" {
 			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i. description) LIKE $%d)", argCount, argCount)
@@ -176,14 +194,71 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 }
 
 func (r *InitiativeRepositoryImpl) ChangeStatus(ctx context.Context, initiativeID int64, status, reason string) error {
+	// Primeiro, buscar o status atual
+	var oldStatus string
+	err := r.db.QueryRowContext(ctx, `SELECT status FROM initiatives WHERE id = $1`, initiativeID).Scan(&oldStatus)
+	if err != nil {
+		return err
+	}
+
+	// Atualizar o status
 	query := `
 		UPDATE initiatives
 		SET status = $1, updated_at = NOW()
 		WHERE id = $2
 	`
 
-	_, err := r.db.ExecContext(ctx, query, status, initiativeID)
-	return err
+	_, err = r.db.ExecContext(ctx, query, status, initiativeID)
+	if err != nil {
+		return err
+	}
+
+	// Registrar no histórico (precisamos do userID, vamos passar pelo contexto depois)
+	// Por enquanto vamos usar o owner_id da iniciativa
+	var ownerID int64
+	r.db.QueryRowContext(ctx, `SELECT owner_id FROM initiatives WHERE id = $1`, initiativeID).Scan(&ownerID)
+
+	history := &entities.InitiativeHistory{
+		InitiativeID: initiativeID,
+		UserID:       ownerID, // Isso será corrigido no UseCase
+		OldStatus:    oldStatus,
+		NewStatus:    status,
+		Reason:       reason,
+	}
+
+	return r.historyRepo.Create(ctx, history)
+}
+
+func (r *InitiativeRepositoryImpl) ChangeStatusWithUser(ctx context.Context, initiativeID int64, status, reason string, userID int64) error {
+	// Primeiro, buscar o status atual
+	var oldStatus string
+	err := r.db.QueryRowContext(ctx, `SELECT status FROM initiatives WHERE id = $1`, initiativeID).Scan(&oldStatus)
+	if err != nil {
+		return err
+	}
+
+	// Atualizar o status
+	query := `
+		UPDATE initiatives
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	_, err = r.db.ExecContext(ctx, query, status, initiativeID)
+	if err != nil {
+		return err
+	}
+
+	// Registrar no histórico
+	history := &entities.InitiativeHistory{
+		InitiativeID: initiativeID,
+		UserID:       userID,
+		OldStatus:    oldStatus,
+		NewStatus:    status,
+		Reason:       reason,
+	}
+
+	return r.historyRepo.Create(ctx, history)
 }
 
 func (r *InitiativeRepositoryImpl) GetByOwner(ctx context.Context, ownerID int64) ([]*entities.Initiative, error) {
