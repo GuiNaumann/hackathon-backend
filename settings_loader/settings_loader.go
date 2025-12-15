@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
@@ -59,7 +60,12 @@ type StorageConfig struct {
 func NewSettingsLoader() *SettingsLoader {
 	var settings SettingsLoader
 
-	configPath := "./settings.toml"
+	//configPath := "./settings.toml"
+	configPath, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	configPath = filepath.Join(configPath, "settings.toml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("Arquivo settings.toml não encontrado em: %s", configPath)
 	}
