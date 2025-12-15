@@ -4,7 +4,7 @@ type CreateUserRequest struct {
 	Email    string  `json:"email"`
 	Name     string  `json:"name"`
 	Password string  `json:"password"`
-	TypeIDs  []int64 `json:"type_ids"` // IDs dos tipos a atribuir
+	TypeIDs  []int64 `json:"type_ids"` // Array de IDs dos tipos (obrigatório pelo menos 1)
 }
 
 type UpdateUserRequest struct {
