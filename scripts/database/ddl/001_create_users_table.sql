@@ -16,5 +16,5 @@ INSERT INTO users (email, name, password)
 VALUES (
            'admin@hackathon.com',
            'Admin User',
-           '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+           '$2a$10$LKprZ8AGbw.UMI6Flk6OB.ceOXgUeJtoLQzP.4mt4rGvBvGImtbIi'
        ) ON CONFLICT (email) DO NOTHING;
