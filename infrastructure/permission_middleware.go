@@ -1,8 +1,8 @@
 package infrastructure
 
 import (
+	_ "hackathon-backend/domain/entities"
 	"hackathon-backend/domain/usecases"
-	contextutil "hackathon-backend/utils/context"
 	"hackathon-backend/utils/http_error"
 	"net/http"
 )
@@ -11,7 +11,7 @@ func NewPermissionMiddleware(permUseCase usecases.PermissionUseCase) func(http.H
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// 1. Pegar usuário do contexto (já injetado pelo AuthMiddleware)
-			user, ok := contextutil.GetUserFromContext(r.Context())
+			user, ok := GetUserFromContext(r.Context())
 			if !ok {
 				http_error.Unauthorized(w, "Usuário não autenticado")
 				return
@@ -42,7 +42,7 @@ func NewPermissionMiddleware(permUseCase usecases.PermissionUseCase) func(http.H
 func RequireUserType(permUseCase usecases.PermissionUseCase, requiredTypes ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			user, ok := contextutil.GetUserFromContext(r.Context())
+			user, ok := GetUserFromContext(r.Context())
 			if !ok {
 				http_error.Unauthorized(w, "Usuário não autenticado")
 				return

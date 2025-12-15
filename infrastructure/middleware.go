@@ -1,14 +1,17 @@
 package infrastructure
 
 import (
-	"github.com/gorilla/securecookie"
-	//"hackathon-backend/domain/entities"
+	"context"
+	"hackathon-backend/domain/entities"
 	"hackathon-backend/infrastructure/repositories/impl"
 	"hackathon-backend/settings_loader"
-	contextutil "hackathon-backend/utils/context"
 	"hackathon-backend/utils/http_error"
 	"net/http"
+
+	"github.com/gorilla/securecookie"
 )
+
+const CtxUserKey = "auth-ctx-user-data"
 
 func NewAuthMiddleware(authRepo *repository_impl.AuthRepositoryImpl, settings *settings_loader.SettingsLoader) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -36,8 +39,13 @@ func NewAuthMiddleware(authRepo *repository_impl.AuthRepositoryImpl, settings *s
 			}
 
 			// 4. Injetar usuário no contexto
-			ctx := contextutil.SetUserInContext(r.Context(), user)
+			ctx := context.WithValue(r.Context(), CtxUserKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func GetUserFromContext(ctx context.Context) (*entities.User, bool) {
+	user, ok := ctx.Value(CtxUserKey).(*entities.User)
+	return user, ok
 }

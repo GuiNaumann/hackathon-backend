@@ -3,12 +3,13 @@ package infrastructure
 import (
 	"database/sql"
 	"fmt"
-	"github.com/gorilla/mux"
 	"hackathon-backend/domain/usecases/usecase_impl"
 	"hackathon-backend/infrastructure/modules/impl"
 	repository_impl "hackathon-backend/infrastructure/repositories/impl"
 	"hackathon-backend/settings_loader"
 	"log"
+
+	"github.com/gorilla/mux"
 )
 
 type SetupConfig struct {
@@ -18,7 +19,6 @@ type SetupConfig struct {
 	PermRepository    *repository_impl.PermissionRepositoryImpl
 	AuthUseCase       *usecase_impl.AuthUseCaseImpl
 	PermissionUseCase *usecase_impl.PermissionUseCaseImpl
-	UserCrudUseCase   *usecase_impl.UserCrudUseCaseImpl
 }
 
 func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*SetupConfig, error) {
@@ -37,32 +37,30 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	// 3. Inicializar UseCases
 	authUseCase := usecase_impl.NewAuthUseCaseImpl(authRepository, settings)
 	permUseCase := usecase_impl.NewPermissionUseCaseImpl(permRepository, authRepository)
-	userCrudUseCase := usecase_impl.NewUserCrudUseCaseImpl(authRepository, permRepository)
 
 	// 4. Inicializar Módulos HTTP
 	authModule := module_impl.NewAuthModule(authUseCase, settings)
 	permModule := module_impl.NewPermissionModule(permUseCase)
-	userCrudModule := module_impl.NewUserCrudModule(userCrudUseCase)
 	healthModule := module_impl.NewHealthModule()
 
-	// 5. Registrar Rotas Públicas (sem autenticação)
-	publicRouter := router.PathPrefix("/api").Subrouter()
-	authModule.RegisterPublicRoutes(publicRouter)
-	healthModule.RegisterRoutes(publicRouter)
+	// 🔹 ROUTER BASE /api
+	apiRouter := router.PathPrefix("/api").Subrouter()
 
-	// 6. Registrar Rotas Privadas (com autenticação + permissões)
-	privateRouter := router.PathPrefix("/private").Subrouter()
+	// 🔓 Rotas públicas
+	authModule.RegisterPublicRoutes(apiRouter)
+	healthModule.RegisterRoutes(apiRouter)
 
-	// Middleware:  Autenticação
+	// 🔐 Rotas privadas → /api/private/*
+	privateRouter := apiRouter.PathPrefix("/private").Subrouter()
+
 	privateRouter.Use(NewAuthMiddleware(authRepository, settings))
 
-	// Middleware: Verificação de permissões
+	// Segundo middleware: Verificação de permissões
 	privateRouter.Use(NewPermissionMiddleware(permUseCase))
 
 	// Registrar rotas privadas
 	authModule.RegisterPrivateRoutes(privateRouter)
 	permModule.RegisterRoutes(privateRouter)
-	userCrudModule.RegisterRoutes(privateRouter)
 
 	log.Println("✅ Setup concluído com sucesso")
 
@@ -73,7 +71,6 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		PermRepository:    permRepository,
 		AuthUseCase:       authUseCase,
 		PermissionUseCase: permUseCase,
-		UserCrudUseCase:   userCrudUseCase,
 	}, nil
 }
 

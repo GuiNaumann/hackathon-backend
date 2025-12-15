@@ -2,12 +2,13 @@ package module_impl
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/securecookie"
 	"hackathon-backend/domain/entities"
 	"hackathon-backend/domain/usecases"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
+	//"hackathon-backend/infrastructure"
 	"hackathon-backend/settings_loader"
-	contextutil "hackathon-backend/utils/context"
 	"hackathon-backend/utils/http_error"
 	"net/http"
 	"time"
@@ -100,7 +101,7 @@ func (m *AuthModule) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *AuthModule) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := contextutil.GetUserFromContext(r.Context())
+	user, ok := r.Context().Value("auth-ctx-user-data").(*entities.User)
 	if !ok {
 		http_error.Unauthorized(w, "Usuário não autenticado")
 		return

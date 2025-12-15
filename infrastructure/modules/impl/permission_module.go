@@ -3,8 +3,9 @@ package module_impl
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"hackathon-backend/domain/entities"
 	"hackathon-backend/domain/usecases"
-	contextutil "hackathon-backend/utils/context"
+	//"hackathon-backend/infrastructure"
 	"hackathon-backend/utils/http_error"
 	"net/http"
 	"strconv"
@@ -27,7 +28,7 @@ func (m *PermissionModule) RegisterRoutes(router *mux.Router) {
 }
 
 func (m *PermissionModule) GetPersonalInformation(w http.ResponseWriter, r *http.Request) {
-	user, ok := contextutil.GetUserFromContext(r.Context())
+	user, ok := r.Context().Value("auth-ctx-user-data").(*entities.User)
 	if !ok {
 		http_error.Unauthorized(w, "Usuário não autenticado")
 		return
