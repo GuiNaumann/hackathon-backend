@@ -51,11 +51,11 @@ SELECT ut.id, endpoint, method
 FROM user_type ut
          CROSS JOIN (
     VALUES
-        ('/private/me', 'GET'),
-        ('/private/personal-information', 'GET'),
-        ('/private/admin/users', 'GET'),
-        ('/private/admin/users', 'POST'),
-        ('/private/admin/users', 'DELETE')
+        ('/api/private/me', 'GET'),
+        ('/api/private/personal-information', 'GET'),
+        ('/api/private/admin/users', 'GET'),
+        ('/api/private/admin/users', 'POST'),
+        ('/api/private/admin/users', 'DELETE')
 ) AS perms(endpoint, method)
 WHERE ut.name = 'admin'
     ON CONFLICT DO NOTHING;
@@ -66,9 +66,9 @@ SELECT ut.id, endpoint, method
 FROM user_type ut
          CROSS JOIN (
     VALUES
-        ('/private/me', 'GET'),
-        ('/private/personal-information', 'GET'),
-        ('/private/admin/users', 'GET')
+        ('/api/private/me', 'GET'),
+        ('/api/private/personal-information', 'GET'),
+        ('/api/private/admin/users', 'GET')
 ) AS perms(endpoint, method)
 WHERE ut.name = 'manager'
     ON CONFLICT DO NOTHING;
@@ -79,8 +79,8 @@ SELECT ut.id, endpoint, method
 FROM user_type ut
          CROSS JOIN (
     VALUES
-        ('/private/me', 'GET'),
-        ('/private/personal-information', 'GET')
+        ('/api/private/me', 'GET'),
+        ('/api/private/personal-information', 'GET')
 ) AS perms(endpoint, method)
 WHERE ut.name = 'user'
     ON CONFLICT DO NOTHING;
