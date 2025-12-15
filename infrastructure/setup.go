@@ -20,10 +20,12 @@ type SetupConfig struct {
 	AuthRepository       *repository_impl.AuthRepositoryImpl
 	PermRepository       *repositories.PermissionRepositoryImpl
 	InitiativeRepository *repository_impl.InitiativeRepositoryImpl
+	CommentRepository    *repository_impl.CommentRepositoryImpl
 	AuthUseCase          *usecase_impl.AuthUseCaseImpl
 	PermissionUseCase    *usecase_impl.PermissionUseCaseImpl
 	UserCrudUseCase      *usecase_impl.UserCrudUseCaseImpl
 	InitiativeUseCase    *usecase_impl.InitiativeUseCaseImpl
+	CommentUseCase       *usecase_impl.CommentUseCaseImpl
 }
 
 func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*SetupConfig, error) {
@@ -39,18 +41,21 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	authRepository := repository_impl.NewAuthRepositoryImpl(db)
 	permRepository := repositories.NewPermissionRepositoryImpl(db)
 	initiativeRepository := repository_impl.NewInitiativeRepositoryImpl(db)
+	commentRepository := repository_impl.NewCommentRepositoryImpl(db)
 
 	// 3. Inicializar UseCases
 	authUseCase := usecase_impl.NewAuthUseCaseImpl(authRepository, settings)
 	permUseCase := usecase_impl.NewPermissionUseCaseImpl(permRepository, authRepository)
 	userCrudUseCase := usecase_impl.NewUserCrudUseCaseImpl(authRepository, permRepository)
 	initiativeUseCase := usecase_impl.NewInitiativeUseCaseImpl(initiativeRepository, permRepository)
+	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
 
 	// 4. Inicializar Módulos HTTP
 	authModule := module_impl.NewAuthModule(authUseCase, settings)
 	permModule := module_impl.NewPermissionModule(permUseCase)
 	userCrudModule := module_impl.NewUserCrudModule(userCrudUseCase)
 	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase)
+	commentModule := module_impl.NewCommentModule(commentUseCase)
 	healthModule := module_impl.NewHealthModule()
 
 	// 5. Registrar Rotas Públicas (sem autenticação)
@@ -72,6 +77,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	permModule.RegisterRoutes(privateRouter)
 	userCrudModule.RegisterRoutes(privateRouter)
 	initiativeModule.RegisterRoutes(privateRouter)
+	commentModule.RegisterRoutes(privateRouter)
 
 	log.Println("✅ Setup concluído com sucesso")
 
@@ -81,10 +87,12 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		AuthRepository:       authRepository,
 		PermRepository:       permRepository,
 		InitiativeRepository: initiativeRepository,
+		CommentRepository:    commentRepository,
 		AuthUseCase:          authUseCase,
 		PermissionUseCase:    permUseCase,
 		UserCrudUseCase:      userCrudUseCase,
 		InitiativeUseCase:    initiativeUseCase,
+		CommentUseCase:       commentUseCase,
 	}, nil
 }
 
