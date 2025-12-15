@@ -1,9 +1,6 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 	setup "hackathon-backend/infrastructure"
 	"hackathon-backend/settings_loader"
 	"log"
@@ -11,6 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func init() {
@@ -53,6 +54,7 @@ func main() {
 			"http://localhost:3000",
 			"http://localhost:8080",
 			"http://localhost:8081",
+			"http://localhost:5173",
 		},
 		AllowedMethods:   []string{"POST", "GET", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
