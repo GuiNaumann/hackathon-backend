@@ -3,12 +3,13 @@ package infrastructure
 import (
 	"database/sql"
 	"fmt"
-	"github.com/gorilla/mux"
 	"hackathon-backend/domain/usecases/usecase_impl"
 	"hackathon-backend/infrastructure/modules/impl"
 	repository_impl "hackathon-backend/infrastructure/repositories/impl"
 	"hackathon-backend/settings_loader"
 	"log"
+
+	"github.com/gorilla/mux"
 )
 
 type SetupConfig struct {
@@ -42,15 +43,16 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	permModule := module_impl.NewPermissionModule(permUseCase)
 	healthModule := module_impl.NewHealthModule()
 
-	// 5. Registrar Rotas Públicas (sem autenticação)
-	publicRouter := router.PathPrefix("/api").Subrouter()
-	authModule.RegisterPublicRoutes(publicRouter)
-	healthModule.RegisterRoutes(publicRouter)
+	// 🔹 ROUTER BASE /api
+	apiRouter := router.PathPrefix("/api").Subrouter()
 
-	// 6. Registrar Rotas Privadas (com autenticação + permissões)
-	privateRouter := router.PathPrefix("/private").Subrouter()
+	// 🔓 Rotas públicas
+	authModule.RegisterPublicRoutes(apiRouter)
+	healthModule.RegisterRoutes(apiRouter)
 
-	// Primeiro middleware:  Autenticação
+	// 🔐 Rotas privadas → /api/private/*
+	privateRouter := apiRouter.PathPrefix("/private").Subrouter()
+
 	privateRouter.Use(NewAuthMiddleware(authRepository, settings))
 
 	// Segundo middleware: Verificação de permissões

@@ -1,9 +1,6 @@
 package main
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 	setup "hackathon-backend/infrastructure"
 	"hackathon-backend/settings_loader"
 	"log"
@@ -11,6 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func init() {
