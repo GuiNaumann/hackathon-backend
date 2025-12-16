@@ -6,7 +6,8 @@ type User struct {
 	ID        int64     `json:"id"`
 	Email     string    `json:"email"`
 	Name      string    `json:"name"`
-	Password  string    `json:"-"` // Nunca retornar no JSON
+	Password  string    `json:"-"`
+	SectorID  *int64    `json:"sector_id,omitempty"` // NOVO
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
