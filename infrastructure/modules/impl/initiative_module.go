@@ -149,9 +149,10 @@ func (m *InitiativeModule) ReviewInitiative(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// CORRIGIDO: mensagem agora diz "aprovada" ao invés de "movida para análise"
 	action := "reprovada"
 	if req.Approved {
-		action = "aprovada e movida para análise"
+		action = "aprovada"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
