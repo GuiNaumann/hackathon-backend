@@ -1,22 +1,15 @@
 package entities
 
-// Request para refinar texto com IA
-type RefineTextRequest struct {
+// Request para processar texto com IA
+type AIRequest struct {
 	Text   string `json:"text"`
-	Action string `json:"action"` // "summarize", "refine", "expand"
+	Prompt string `json:"prompt"`
 }
 
 // Response da IA
-type RefineTextResponse struct {
+type AIResponse struct {
 	OriginalText string `json:"original_text"`
-	RefinedText  string `json:"refined_text"`
-	Action       string `json:"action"`
+	GeneratedText string `json:"generated_text"`
+	Prompt       string `json:"prompt"`
 	Model        string `json:"model"`
 }
-
-// Tipos de ações
-const (
-	ActionSummarize = "summarize" // Resumir
-	ActionRefine    = "refine"    // Melhorar/Refinar
-	ActionExpand    = "expand"    // Expandir/Detalhar
-)

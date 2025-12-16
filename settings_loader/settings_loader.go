@@ -60,8 +60,8 @@ type StorageConfig struct {
 
 // NOVO: Configuração de IA
 type AIConfig struct {
-	GroqAPIKey     string  `toml:"groq_api_key"`
-	GroqModel      string  `toml:"groq_model"`
+	GeminiAPIKey   string  `toml:"gemini_api_key"`
+	GeminiModel    string  `toml:"gemini_model"`
 	MaxTokens      int     `toml:"max_tokens"`
 	Temperature    float64 `toml:"temperature"`
 	RequestTimeout int     `toml:"request_timeout"` // em segundos
@@ -98,8 +98,8 @@ func NewSettingsLoader() *SettingsLoader {
 // NOVO: Aplicar valores padrão
 func (s *SettingsLoader) applyDefaults() {
 	// Defaults para AI
-	if s.AI.GroqModel == "" {
-		s.AI.GroqModel = "mixtral-8x7b-32768"
+	if s.AI.GeminiModel == "" {
+		s.AI.GeminiModel = "gemini-2.0-flash"
 	}
 	if s.AI.MaxTokens == 0 {
 		s.AI.MaxTokens = 2000
@@ -130,8 +130,8 @@ func (s *SettingsLoader) Validate() error {
 	}
 
 	// NOVO: Validar AI (apenas aviso, não obrigatório)
-	if s.AI.GroqAPIKey == "" {
-		log.Println("⚠️  Aviso: ai.groq_api_key não configurado - funcionalidades de IA estarão desabilitadas")
+	if s.AI.GeminiAPIKey == "" {
+		log.Println("⚠️  Aviso: ai.gemini_api_key não configurado - funcionalidades de IA estarão desabilitadas")
 	}
 
 	return nil
@@ -157,12 +157,12 @@ func (s *SettingsLoader) IsProduction() bool {
 }
 
 // NOVO: Helpers para AI
-func (s *SettingsLoader) GetGroqAPIKey() string {
-	return s.AI.GroqAPIKey
+func (s *SettingsLoader) GetGeminiAPIKey() string {
+	return s.AI.GeminiAPIKey
 }
 
-func (s *SettingsLoader) GetGroqModel() string {
-	return s.AI.GroqModel
+func (s *SettingsLoader) GetGeminiModel() string {
+	return s.AI.GeminiModel
 }
 
 func (s *SettingsLoader) GetAIMaxTokens() int {
@@ -178,5 +178,5 @@ func (s *SettingsLoader) GetAIRequestTimeout() int {
 }
 
 func (s *SettingsLoader) IsAIEnabled() bool {
-	return s.AI.GroqAPIKey != ""
+	return s.AI.GeminiAPIKey != ""
 }
