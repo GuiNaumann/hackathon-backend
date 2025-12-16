@@ -159,12 +159,14 @@ func (uc *InitiativeUseCaseImpl) DeleteInitiative(ctx context.Context, initiativ
 	return uc.initiativeRepo.Delete(ctx, initiativeID)
 }
 
+// ATUALIZADO: Agora usa GetByIDWithCancellation
 func (uc *InitiativeUseCaseImpl) GetInitiativeByID(ctx context.Context, initiativeID int64) (*entities.Initiative, error) {
-	return uc.initiativeRepo.GetByID(ctx, initiativeID)
+	return uc.initiativeRepo.GetByIDWithCancellation(ctx, initiativeID)
 }
 
+// ATUALIZADO: Agora usa ListAllWithCancellation
 func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.InitiativeListResponse, error) {
-	initiatives, err := uc.initiativeRepo.ListAll(ctx, filter)
+	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao listar iniciativas: %w", err)
 	}
@@ -172,7 +174,7 @@ func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *en
 	// Converter para response
 	var response []*entities.InitiativeListResponse
 	for _, initiative := range initiatives {
-		response = append(response, &entities.InitiativeListResponse{
+		listItem := &entities.InitiativeListResponse{
 			ID:          initiative.ID,
 			Title:       initiative.Title,
 			Description: truncateDescription(initiative.Description, 150),
@@ -182,7 +184,14 @@ func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *en
 			Sector:      initiative.Sector,
 			OwnerName:   initiative.OwnerName,
 			Date:        formatDate(initiative.CreatedAt),
-		})
+		}
+
+		// Adicionar informação de cancelamento se existir
+		if initiative.CancellationRequest != nil {
+			listItem.CancellationRequest = initiative.CancellationRequest
+		}
+
+		response = append(response, listItem)
 	}
 
 	return response, nil

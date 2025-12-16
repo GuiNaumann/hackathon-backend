@@ -114,12 +114,96 @@ func (r *InitiativeRepositoryImpl) GetByID(ctx context.Context, initiativeID int
 	return initiative, nil
 }
 
+// NOVO: GetByID com informação de cancelamento
+func (r *InitiativeRepositoryImpl) GetByIDWithCancellation(ctx context.Context, initiativeID int64) (*entities.Initiative, error) {
+	query := `
+		SELECT i.id, i. title, i.description, i. benefits, i.status, i. type, i.priority, i. sector, 
+		       i. owner_id, u.name as owner_name, i.deadline, i.created_at, i. updated_at,
+		       cr.id, cr.status, cr.requested_by_user_id, u2.name, cr.reason, 
+		       cr.reviewed_by_user_id, u3.name, cr.review_reason, cr.created_at, cr.reviewed_at
+		FROM initiatives i
+		INNER JOIN users u ON u.id = i. owner_id
+		LEFT JOIN initiative_cancellation_requests cr ON cr.initiative_id = i.id 
+		    AND cr.status IN ('Pendente', 'Aprovada', 'Reprovada')
+		LEFT JOIN users u2 ON u2.id = cr.requested_by_user_id
+		LEFT JOIN users u3 ON u3.id = cr.reviewed_by_user_id
+		WHERE i.id = $1
+		ORDER BY cr.created_at DESC
+		LIMIT 1
+	`
+
+	initiative := &entities.Initiative{}
+	var crID sql.NullInt64
+	var crStatus, crRequestedByName, crReason sql.NullString
+	var crRequestedByUserID sql.NullInt64
+	var crReviewedByUserID sql.NullInt64
+	var crReviewedByName, crReviewReason sql.NullString
+	var crCreatedAt sql.NullTime
+	var crReviewedAt sql.NullTime
+
+	err := r.db.QueryRowContext(ctx, query, initiativeID).Scan(
+		&initiative.ID,
+		&initiative.Title,
+		&initiative.Description,
+		&initiative.Benefits,
+		&initiative.Status,
+		&initiative.Type,
+		&initiative.Priority,
+		&initiative.Sector,
+		&initiative.OwnerID,
+		&initiative.OwnerName,
+		&initiative.Deadline,
+		&initiative.CreatedAt,
+		&initiative.UpdatedAt,
+		&crID,
+		&crStatus,
+		&crRequestedByUserID,
+		&crRequestedByName,
+		&crReason,
+		&crReviewedByUserID,
+		&crReviewedByName,
+		&crReviewReason,
+		&crCreatedAt,
+		&crReviewedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Se existe solicitação de cancelamento
+	if crID.Valid {
+		cancellationInfo := &entities.InitiativeCancellationInfo{
+			ID:                crID.Int64,
+			Status:            crStatus.String,
+			RequestedByUserID: crRequestedByUserID.Int64,
+			RequestedByName:   crRequestedByName.String,
+			Reason:            crReason.String,
+			CreatedAt:         crCreatedAt.Time,
+		}
+
+		if crReviewedByUserID.Valid {
+			cancellationInfo.ReviewedByUserID = &crReviewedByUserID.Int64
+			cancellationInfo.ReviewedByName = crReviewedByName.String
+			cancellationInfo.ReviewReason = crReviewReason.String
+		}
+
+		if crReviewedAt.Valid {
+			cancellationInfo.ReviewedAt = &crReviewedAt.Time
+		}
+
+		initiative.CancellationRequest = cancellationInfo
+	}
+
+	return initiative, nil
+}
+
 func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.Initiative, error) {
 	query := `
 		SELECT i.id, i.title, i.description, i.benefits, i.status, i.type, i.priority, i.sector, 
-		       i.owner_id, u.name as owner_name, i.deadline, i.created_at, i.updated_at
+		       i.owner_id, u. name as owner_name, i. deadline, i.created_at, i.updated_at
 		FROM initiatives i
-		INNER JOIN users u ON u.id = i.owner_id
+		INNER JOIN users u ON u.id = i. owner_id
 		WHERE 1=1
 	`
 
@@ -134,7 +218,7 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 		}
 
 		if filter.Status != "" {
-			query += fmt.Sprintf(" AND i.status = $%d", argCount)
+			query += fmt.Sprintf(" AND i. status = $%d", argCount)
 			args = append(args, filter.Status)
 			argCount++
 		}
@@ -152,7 +236,7 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 		}
 
 		if filter.Priority != "" {
-			query += fmt.Sprintf(" AND i.priority = $%d", argCount)
+			query += fmt.Sprintf(" AND i. priority = $%d", argCount)
 			args = append(args, filter.Priority)
 			argCount++
 		}
@@ -187,6 +271,140 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 		if err != nil {
 			return nil, err
 		}
+		initiatives = append(initiatives, initiative)
+	}
+
+	return initiatives, nil
+}
+
+// NOVO: ListAll com informação de cancelamento
+func (r *InitiativeRepositoryImpl) ListAllWithCancellation(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.Initiative, error) {
+	query := `
+		SELECT i.id, i.title, i.description, i.benefits, i.status, i.type, i.priority, i.sector, 
+		       i.owner_id, u.name as owner_name, i.deadline, i. created_at, i.updated_at,
+		       cr.id, cr.status, cr.requested_by_user_id, u2.name, cr.reason, 
+		       cr.reviewed_by_user_id, u3.name, cr.review_reason, cr.created_at, cr.reviewed_at
+		FROM initiatives i
+		INNER JOIN users u ON u.id = i.owner_id
+		LEFT JOIN LATERAL (
+		    SELECT * FROM initiative_cancellation_requests 
+		    WHERE initiative_id = i.id 
+		    AND status IN ('Pendente', 'Aprovada', 'Reprovada')
+		    ORDER BY created_at DESC
+		    LIMIT 1
+		) cr ON true
+		LEFT JOIN users u2 ON u2.id = cr.requested_by_user_id
+		LEFT JOIN users u3 ON u3.id = cr.reviewed_by_user_id
+		WHERE 1=1
+	`
+
+	var args []interface{}
+	argCount := 1
+
+	if filter != nil {
+		if filter.Search != "" {
+			query += fmt.Sprintf(" AND (LOWER(i. title) LIKE $%d OR LOWER(i.description) LIKE $%d)", argCount, argCount)
+			args = append(args, "%"+strings.ToLower(filter.Search)+"%")
+			argCount++
+		}
+
+		if filter.Status != "" {
+			query += fmt.Sprintf(" AND i.status = $%d", argCount)
+			args = append(args, filter.Status)
+			argCount++
+		}
+
+		if filter.Type != "" {
+			query += fmt.Sprintf(" AND i. type = $%d", argCount)
+			args = append(args, filter.Type)
+			argCount++
+		}
+
+		if filter.Sector != "" {
+			query += fmt.Sprintf(" AND i.sector = $%d", argCount)
+			args = append(args, filter.Sector)
+			argCount++
+		}
+
+		if filter.Priority != "" {
+			query += fmt.Sprintf(" AND i.priority = $%d", argCount)
+			args = append(args, filter.Priority)
+			argCount++
+		}
+	}
+
+	query += " ORDER BY i.created_at DESC"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var initiatives []*entities.Initiative
+	for rows.Next() {
+		initiative := &entities.Initiative{}
+		var crID sql.NullInt64
+		var crStatus, crRequestedByName, crReason sql.NullString
+		var crRequestedByUserID sql.NullInt64
+		var crReviewedByUserID sql.NullInt64
+		var crReviewedByName, crReviewReason sql.NullString
+		var crCreatedAt sql.NullTime
+		var crReviewedAt sql.NullTime
+
+		err := rows.Scan(
+			&initiative.ID,
+			&initiative.Title,
+			&initiative.Description,
+			&initiative.Benefits,
+			&initiative.Status,
+			&initiative.Type,
+			&initiative.Priority,
+			&initiative.Sector,
+			&initiative.OwnerID,
+			&initiative.OwnerName,
+			&initiative.Deadline,
+			&initiative.CreatedAt,
+			&initiative.UpdatedAt,
+			&crID,
+			&crStatus,
+			&crRequestedByUserID,
+			&crRequestedByName,
+			&crReason,
+			&crReviewedByUserID,
+			&crReviewedByName,
+			&crReviewReason,
+			&crCreatedAt,
+			&crReviewedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Se existe solicitação de cancelamento
+		if crID.Valid {
+			cancellationInfo := &entities.InitiativeCancellationInfo{
+				ID:                crID.Int64,
+				Status:            crStatus.String,
+				RequestedByUserID: crRequestedByUserID.Int64,
+				RequestedByName:   crRequestedByName.String,
+				Reason:            crReason.String,
+				CreatedAt:         crCreatedAt.Time,
+			}
+
+			if crReviewedByUserID.Valid {
+				cancellationInfo.ReviewedByUserID = &crReviewedByUserID.Int64
+				cancellationInfo.ReviewedByName = crReviewedByName.String
+				cancellationInfo.ReviewReason = crReviewReason.String
+			}
+
+			if crReviewedAt.Valid {
+				cancellationInfo.ReviewedAt = &crReviewedAt.Time
+			}
+
+			initiative.CancellationRequest = cancellationInfo
+		}
+
 		initiatives = append(initiatives, initiative)
 	}
 

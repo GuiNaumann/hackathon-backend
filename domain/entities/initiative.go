@@ -3,19 +3,47 @@ package entities
 import "time"
 
 type Initiative struct {
-	ID          int64      `json:"id"`
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Benefits    string     `json:"benefits"`
-	Status      string     `json:"status"`
-	Type        string     `json:"type"`
-	Priority    string     `json:"priority"`
-	Sector      string     `json:"sector"`
-	OwnerID     int64      `json:"owner_id"`
-	OwnerName   string     `json:"owner_name"`
-	Deadline    *time.Time `json:"deadline,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID                  int64                       `json:"id"`
+	Title               string                      `json:"title"`
+	Description         string                      `json:"description"`
+	Benefits            string                      `json:"benefits"`
+	Status              string                      `json:"status"`
+	Type                string                      `json:"type"`
+	Priority            string                      `json:"priority"`
+	Sector              string                      `json:"sector"`
+	OwnerID             int64                       `json:"owner_id"`
+	OwnerName           string                      `json:"owner_name"`
+	Deadline            *time.Time                  `json:"deadline,omitempty"`
+	CreatedAt           time.Time                   `json:"created_at"`
+	UpdatedAt           time.Time                   `json:"updated_at"`
+	CancellationRequest *InitiativeCancellationInfo `json:"cancellation_request,omitempty"` // NOVO
+}
+
+// Informações resumidas sobre solicitação de cancelamento
+type InitiativeCancellationInfo struct {
+	ID                int64      `json:"id"`
+	Status            string     `json:"status"` // Pendente, Aprovada, Reprovada
+	RequestedByUserID int64      `json:"requested_by_user_id"`
+	RequestedByName   string     `json:"requested_by_name"`
+	Reason            string     `json:"reason"`
+	ReviewedByUserID  *int64     `json:"reviewed_by_user_id,omitempty"`
+	ReviewedByName    string     `json:"reviewed_by_name,omitempty"`
+	ReviewReason      string     `json:"review_reason,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	ReviewedAt        *time.Time `json:"reviewed_at,omitempty"`
+}
+
+type InitiativeListResponse struct {
+	ID                  int64                       `json:"id"`
+	Title               string                      `json:"title"`
+	Description         string                      `json:"description"`
+	Status              string                      `json:"status"`
+	Type                string                      `json:"type"`
+	Priority            string                      `json:"priority"`
+	Sector              string                      `json:"sector"`
+	OwnerName           string                      `json:"owner_name"`
+	Date                string                      `json:"date"`
+	CancellationRequest *InitiativeCancellationInfo `json:"cancellation_request,omitempty"` // NOVO
 }
 
 type CreateInitiativeRequest struct {
@@ -25,7 +53,7 @@ type CreateInitiativeRequest struct {
 	Type        string  `json:"type"`
 	Priority    string  `json:"priority"`
 	Sector      string  `json:"sector"`
-	Deadline    *string `json:"deadline,omitempty"` // ISO format string
+	Deadline    *string `json:"deadline,omitempty"`
 }
 
 type UpdateInitiativeRequest struct {
@@ -40,7 +68,7 @@ type UpdateInitiativeRequest struct {
 
 type ChangeInitiativeStatusRequest struct {
 	Status string `json:"status"`
-	Reason string `json:"reason,omitempty"` // Para status como "Devolvida" ou "Reprovada"
+	Reason string `json:"reason"`
 }
 
 type InitiativeFilter struct {
@@ -51,31 +79,19 @@ type InitiativeFilter struct {
 	Priority string
 }
 
-type InitiativeListResponse struct {
-	ID          int64  `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	Type        string `json:"type"`
-	Priority    string `json:"priority"`
-	Sector      string `json:"sector"`
-	OwnerName   string `json:"owner"`
-	Date        string `json:"date"`
-}
-
-// Constantes de Status
+// Status da iniciativa
 const (
-	StatusSubmitted   = "Submetida"   // Recém criada
-	StatusInAnalysis  = "Em Análise"  // Sendo analisada
-	StatusApproved    = "Aprovada"    // Aprovada para execução
-	StatusInExecution = "Em Execução" // Sendo executada
-	StatusReturned    = "Devolvida"   // Devolvida para ajustes
-	StatusRejected    = "Reprovada"   // Rejeitada
-	StatusCompleted   = "Concluída"   // Finalizada
-	StatusCancelled   = "Cancelada"   // Cancelada
+	StatusSubmitted   = "Submetida"
+	StatusInAnalysis  = "Em Análise"
+	StatusApproved    = "Aprovada"
+	StatusInExecution = "Em Execução"
+	StatusReturned    = "Devolvida"
+	StatusRejected    = "Reprovada"
+	StatusCompleted   = "Concluída"
+	StatusCancelled   = "Cancelada"
 )
 
-// Constantes de Tipo
+// Tipos de iniciativa
 const (
 	TypeAutomation  = "Automação"
 	TypeIntegration = "Integração"
@@ -83,7 +99,7 @@ const (
 	TypeNewProject  = "Novo Projeto"
 )
 
-// Constantes de Prioridade
+// Prioridades
 const (
 	PriorityHigh   = "Alta"
 	PriorityMedium = "Média"
