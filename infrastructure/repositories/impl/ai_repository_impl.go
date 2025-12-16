@@ -3,6 +3,7 @@ package repository_impl
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,10 +21,20 @@ type AIRepositoryImpl struct {
 func NewAIRepositoryImpl(settings *settings_loader.SettingsLoader) *AIRepositoryImpl {
 	timeout := time.Duration(settings.GetAIRequestTimeout()) * time.Second
 
+	// Configure HTTP client with TLS settings
+	// Note: InsecureSkipVerify is set to true for development
+	// In production, ensure proper CA certificates are installed
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
 	return &AIRepositoryImpl{
 		settings: settings,
 		client: &http.Client{
-			Timeout: timeout,
+			Timeout:   timeout,
+			Transport: transport,
 		},
 	}
 }
