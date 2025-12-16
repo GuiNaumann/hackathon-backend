@@ -6,5 +6,5 @@ import (
 )
 
 type AIRepository interface {
-	RefineText(ctx context.Context, req *entities.RefineTextRequest) (*entities.RefineTextResponse, error)
+	ProcessText(ctx context.Context, req *entities.AIRequest) (*entities.AIResponse, error)
 }

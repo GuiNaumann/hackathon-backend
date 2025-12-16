@@ -33,10 +33,10 @@ root_path = "./storage"
 uploads_path = "./storage/uploads"
 temp_path = "./storage/temp"
 
-# NOVO: Configuração de IA (Groq)
+# NOVO: Configuração de IA (Gemini)
 [ai]
-groq_api_key = "gsk_YOUR_GROQ_API_KEY_HERE"
-groq_model = "mixtral-8x7b-32768"
+gemini_api_key = "AIzaSyAraZOiLxIMfAaMWJDLPC5z38cnGPyfKD8"
+gemini_model = "gemini-2.0-flash"
 max_tokens = 2000
 temperature = 0.7
 request_timeout = 30

@@ -22,23 +22,23 @@ func NewAIModule(aiUseCase usecases.AIUseCase) *AIModule {
 }
 
 func (m *AIModule) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/ai/refine-text", m.RefineText).Methods("POST")
+	router.HandleFunc("/ai/process-text", m.ProcessText).Methods("POST")
 }
 
-func (m *AIModule) RefineText(w http.ResponseWriter, r *http.Request) {
+func (m *AIModule) ProcessText(w http.ResponseWriter, r *http.Request) {
 	user, ok := contextutil.GetUserFromContext(r.Context())
 	if !ok {
 		http_error.Unauthorized(w, "Usuário não autenticado")
 		return
 	}
 
-	var req entities.RefineTextRequest
+	var req entities.AIRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http_error.BadRequest(w, "Payload inválido")
 		return
 	}
 
-	result, err := m.aiUseCase.RefineText(r.Context(), &req, user.ID)
+	result, err := m.aiUseCase.ProcessText(r.Context(), &req, user.ID)
 	if err != nil {
 		http_error.BadRequest(w, err.Error())
 		return

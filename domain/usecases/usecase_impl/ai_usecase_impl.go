@@ -17,30 +17,24 @@ func NewAIUseCaseImpl(aiRepo repositories.AIRepository) *AIUseCaseImpl {
 	}
 }
 
-func (uc *AIUseCaseImpl) RefineText(ctx context.Context, req *entities.RefineTextRequest, userID int64) (*entities.RefineTextResponse, error) {
+func (uc *AIUseCaseImpl) ProcessText(ctx context.Context, req *entities.AIRequest, userID int64) (*entities.AIResponse, error) {
 	// Validações
 	if req.Text == "" {
 		return nil, errors.New("texto não pode estar vazio")
 	}
 
-	if len(req.Text) < 10 {
-		return nil, errors.New("texto muito curto (mínimo 10 caracteres)")
+	if req.Prompt == "" {
+		return nil, errors.New("prompt não pode estar vazio")
 	}
 
-	// Validar action
-	validActions := []string{entities.ActionSummarize, entities.ActionRefine, entities.ActionExpand}
-	isValidAction := false
-	for _, validAction := range validActions {
-		if req.Action == validAction {
-			isValidAction = true
-			break
-		}
+	if len(req.Text) < 1 {
+		return nil, errors.New("texto muito curto")
 	}
 
-	if !isValidAction {
-		req.Action = entities.ActionRefine // Default
+	if len(req.Prompt) < 5 {
+		return nil, errors.New("prompt muito curto (mínimo 5 caracteres)")
 	}
 
 	// Chamar IA
-	return uc.aiRepo.RefineText(ctx, req)
+	return uc.aiRepo.ProcessText(ctx, req)
 }

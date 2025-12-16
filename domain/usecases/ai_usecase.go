@@ -6,5 +6,5 @@ import (
 )
 
 type AIUseCase interface {
-	RefineText(ctx context.Context, req *entities.RefineTextRequest, userID int64) (*entities.RefineTextResponse, error)
+	ProcessText(ctx context.Context, req *entities.AIRequest, userID int64) (*entities.AIResponse, error)
 }

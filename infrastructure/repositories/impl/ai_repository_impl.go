@@ -28,34 +28,43 @@ func NewAIRepositoryImpl(settings *settings_loader.SettingsLoader) *AIRepository
 	}
 }
 
-// Estruturas para comunicação com a API Groq
-type groqRequest struct {
-	Model       string        `json:"model"`
-	Messages    []groqMessage `json:"messages"`
-	Temperature float64       `json:"temperature"`
-	MaxTokens   int           `json:"max_tokens"`
+// Estruturas para comunicação com a API Gemini
+type geminiRequest struct {
+	Contents []geminiContent `json:"contents"`
+	GenerationConfig geminiGenerationConfig `json:"generationConfig"`
 }
 
-type groqMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type geminiContent struct {
+	Parts []geminiPart `json:"parts"`
 }
 
-type groqResponse struct {
-	Choices []struct {
-		Message groqMessage `json:"message"`
-	} `json:"choices"`
-	Model string `json:"model"`
+type geminiPart struct {
+	Text string `json:"text"`
+}
+
+type geminiGenerationConfig struct {
+	Temperature float64 `json:"temperature"`
+	MaxOutputTokens int `json:"maxOutputTokens"`
+}
+
+type geminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
 	Error *struct {
 		Message string `json:"message"`
-		Type    string `json:"type"`
+		Code    int    `json:"code"`
 	} `json:"error,omitempty"`
 }
 
-func (r *AIRepositoryImpl) RefineText(ctx context.Context, req *entities.RefineTextRequest) (*entities.RefineTextResponse, error) {
+func (r *AIRepositoryImpl) ProcessText(ctx context.Context, req *entities.AIRequest) (*entities.AIResponse, error) {
 	// Verificar se IA está habilitada
 	if !r.settings.IsAIEnabled() {
-		return nil, errors.New("funcionalidade de IA não está habilitada.  Configure ai.groq_api_key no settings.toml")
+		return nil, errors.New("funcionalidade de IA não está habilitada. Configure ai.gemini_api_key no settings.toml")
 	}
 
 	// Validações
@@ -63,94 +72,89 @@ func (r *AIRepositoryImpl) RefineText(ctx context.Context, req *entities.RefineT
 		return nil, errors.New("texto não pode estar vazio")
 	}
 
-	if len(req.Text) > 5000 {
-		return nil, errors.New("texto muito longo (máximo 5000 caracteres)")
+	if req.Prompt == "" {
+		return nil, errors.New("prompt não pode estar vazio")
 	}
 
-	// Definir prompt baseado na ação
-	systemPrompt, userPrompt := r.buildPrompts(req.Action, req.Text)
+	if len(req.Text) > 10000 {
+		return nil, errors.New("texto muito longo (máximo 10000 caracteres)")
+	}
 
-	// Montar requisição para Groq
-	groqReq := groqRequest{
-		Model: r.settings.GetGroqModel(),
-		Messages: []groqMessage{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userPrompt},
+	// Combinar prompt com texto
+	fullPrompt := fmt.Sprintf("%s\n\nTexto:\n%s", req.Prompt, req.Text)
+
+	// Montar requisição para Gemini
+	geminiReq := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: []geminiPart{
+					{Text: fullPrompt},
+				},
+			},
 		},
-		Temperature: r.settings.GetAITemperature(),
-		MaxTokens:   r.settings.GetAIMaxTokens(),
+		GenerationConfig: geminiGenerationConfig{
+			Temperature: r.settings.GetAITemperature(),
+			MaxOutputTokens: r.settings.GetAIMaxTokens(),
+		},
 	}
 
-	payload, err := json.Marshal(groqReq)
+	payload, err := json.Marshal(geminiReq)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao montar payload: %w", err)
 	}
 
 	// Criar requisição HTTP
-	apiKey := r.settings.GetGroqAPIKey()
+	apiKey := r.settings.GetGeminiAPIKey()
+	model := r.settings.GetGeminiModel()
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
 
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		"POST",
-		"https://api.groq.com/openai/v1/chat/completions",
+		url,
 		bytes.NewReader(payload),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar requisição: %w", err)
 	}
 
-	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+	httpReq.Header.Set("X-Goog-Api-Key", apiKey)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	// Executar requisição
 	resp, err := r.client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao chamar API Groq: %w", err)
+		return nil, fmt.Errorf("erro ao chamar API Gemini: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Parse da resposta
-	var groqResp groqResponse
-	if err := json.NewDecoder(resp.Body).Decode(&groqResp); err != nil {
+	var geminiResp geminiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&geminiResp); err != nil {
 		return nil, fmt.Errorf("erro ao decodificar resposta: %w", err)
 	}
 
 	// Verificar erro na resposta
-	if groqResp.Error != nil {
-		return nil, fmt.Errorf("erro da API Groq: %s", groqResp.Error.Message)
+	if geminiResp.Error != nil {
+		return nil, fmt.Errorf("erro da API Gemini: %s", geminiResp.Error.Message)
 	}
 
-	// Verificar se tem choices
-	if len(groqResp.Choices) == 0 {
-		return nil, errors.New("resposta vazia da API Groq")
+	// Verificar se tem candidates
+	if len(geminiResp.Candidates) == 0 {
+		return nil, errors.New("resposta vazia da API Gemini")
 	}
 
-	refinedText := groqResp.Choices[0].Message.Content
+	// Verificar se tem parts
+	if len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return nil, errors.New("resposta sem conteúdo da API Gemini")
+	}
 
-	return &entities.RefineTextResponse{
+	generatedText := geminiResp.Candidates[0].Content.Parts[0].Text
+
+	return &entities.AIResponse{
 		OriginalText: req.Text,
-		RefinedText:  refinedText,
-		Action:       req.Action,
-		Model:        groqResp.Model,
+		GeneratedText: generatedText,
+		Prompt:       req.Prompt,
+		Model:        model,
 	}, nil
-}
-
-func (r *AIRepositoryImpl) buildPrompts(action, text string) (systemPrompt, userPrompt string) {
-	switch action {
-	case entities.ActionSummarize:
-		systemPrompt = "Você é um assistente especializado em criar resumos claros e concisos de textos, mantendo as informações mais importantes."
-		userPrompt = fmt.Sprintf("Resuma o seguinte texto de forma clara e objetiva:\n\n%s", text)
-
-	case entities.ActionExpand:
-		systemPrompt = "Você é um assistente que expande e detalha textos, adicionando mais contexto e informações relevantes de forma profissional."
-		userPrompt = fmt.Sprintf("Expanda e detalhe o seguinte texto, mantendo o tom profissional:\n\n%s", text)
-
-	case entities.ActionRefine:
-		fallthrough
-	default:
-		systemPrompt = "Você é um assistente que melhora textos tornando-os mais claros, profissionais e bem estruturados, mantendo a ideia original."
-		userPrompt = fmt.Sprintf("Melhore e refine o seguinte texto, tornando-o mais claro e profissional:\n\n%s", text)
-	}
-
-	return systemPrompt, userPrompt
 }
