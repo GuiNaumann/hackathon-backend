@@ -77,6 +77,7 @@ type InitiativeFilter struct {
 	Type     string
 	Sector   string
 	Priority string
+	SectorID *int64 // NOVO: Filtro por ID do setor
 }
 
 // Status da iniciativa

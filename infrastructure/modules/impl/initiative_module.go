@@ -78,6 +78,13 @@ func (m *InitiativeModule) CreateInitiative(w http.ResponseWriter, r *http.Reque
 }
 
 func (m *InitiativeModule) ListInitiatives(w http.ResponseWriter, r *http.Request) {
+	// NOVO: Pegar usuário autenticado
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
 	// Parse query params para filtros
 	filter := &entities.InitiativeFilter{
 		Search:   r.URL.Query().Get("search"),
@@ -87,7 +94,8 @@ func (m *InitiativeModule) ListInitiatives(w http.ResponseWriter, r *http.Reques
 		Priority: r.URL.Query().Get("priority"),
 	}
 
-	initiatives, err := m.initiativeUseCase.ListInitiatives(r.Context(), filter)
+	// NOVO: Passar userID para aplicar filtro de setor
+	initiatives, err := m.initiativeUseCase.ListInitiatives(r.Context(), filter, user.ID)
 	if err != nil {
 		http_error.InternalServerError(w, "Erro ao listar iniciativas")
 		return
