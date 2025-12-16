@@ -45,6 +45,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeRepository := repository_impl.NewInitiativeRepositoryImpl(db)
 	commentRepository := repository_impl.NewCommentRepositoryImpl(db)
 	initiativeHistoryRepository := repository_impl.NewInitiativeHistoryRepositoryImpl(db)
+	cancellationRepository := repository_impl.NewCancellationRepositoryImpl(db)
 
 	// 3. Inicializar UseCases
 	authUseCase := usecase_impl.NewAuthUseCaseImpl(authRepository, settings)
@@ -53,12 +54,13 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeUseCase := usecase_impl.NewInitiativeUseCaseImpl(initiativeRepository, permRepository)
 	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
 	initiativeHistoryUseCase := usecase_impl.NewInitiativeHistoryUseCaseImpl(initiativeHistoryRepository)
+	cancellationUseCase := usecase_impl.NewCancellationUseCaseImpl(cancellationRepository, initiativeRepository, permRepository)
 
 	// 4. Inicializar Módulos HTTP
 	authModule := module_impl.NewAuthModule(authUseCase, settings)
 	permModule := module_impl.NewPermissionModule(permUseCase)
 	userCrudModule := module_impl.NewUserCrudModule(userCrudUseCase)
-	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase, initiativeHistoryUseCase)
+	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase, initiativeHistoryUseCase, cancellationUseCase)
 	commentModule := module_impl.NewCommentModule(commentUseCase)
 	healthModule := module_impl.NewHealthModule()
 

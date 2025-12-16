@@ -2,6 +2,7 @@ package module_impl
 
 import (
 	"encoding/json"
+	"fmt"
 	"hackathon-backend/domain/entities"
 	"hackathon-backend/domain/usecases"
 	contextutil "hackathon-backend/utils/context"
@@ -15,12 +16,18 @@ import (
 type InitiativeModule struct {
 	initiativeUseCase        usecases.InitiativeUseCase
 	initiativeHistoryUseCase usecases.InitiativeHistoryUseCase
+	cancellationUseCase      usecases.CancellationUseCase
 }
 
-func NewInitiativeModule(initiativeUseCase usecases.InitiativeUseCase, historyUseCase usecases.InitiativeHistoryUseCase) *InitiativeModule {
+func NewInitiativeModule(
+	initiativeUseCase usecases.InitiativeUseCase,
+	historyUseCase usecases.InitiativeHistoryUseCase,
+	cancellationUseCase usecases.CancellationUseCase,
+) *InitiativeModule {
 	return &InitiativeModule{
 		initiativeUseCase:        initiativeUseCase,
 		initiativeHistoryUseCase: historyUseCase,
+		cancellationUseCase:      cancellationUseCase,
 	}
 }
 
@@ -31,8 +38,13 @@ func (m *InitiativeModule) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/initiatives/{id}", m.UpdateInitiative).Methods("PUT")
 	router.HandleFunc("/initiatives/{id}", m.DeleteInitiative).Methods("DELETE")
 	router.HandleFunc("/initiatives/{id}/status", m.ChangeStatus).Methods("PATCH")
-	router.HandleFunc("/initiatives/{id}/history", m.GetHistory).Methods("GET") // NOVO
+	router.HandleFunc("/initiatives/{id}/history", m.GetHistory).Methods("GET")
+	router.HandleFunc("/initiatives/{id}/request-cancellation", m.RequestCancellation).Methods("POST") // NOVO
 	router.HandleFunc("/my-initiatives", m.GetMyInitiatives).Methods("GET")
+
+	// Rotas de gerenciamento de cancelamentos
+	router.HandleFunc("/cancellation-requests", m.ListPendingCancellations).Methods("GET")        // NOVO
+	router.HandleFunc("/cancellation-requests/{id}/review", m.ReviewCancellation).Methods("POST") // NOVO
 }
 
 func (m *InitiativeModule) CreateInitiative(w http.ResponseWriter, r *http.Request) {
@@ -241,5 +253,98 @@ func (m *InitiativeModule) GetHistory(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"data":    history,
 		"count":   len(history),
+	})
+}
+
+func (m *InitiativeModule) RequestCancellation(w http.ResponseWriter, r *http.Request) {
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		http_error.BadRequest(w, "ID inválido")
+		return
+	}
+
+	var req entities.RequestCancellationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http_error.BadRequest(w, "Payload inválido")
+		return
+	}
+
+	cancellationReq, err := m.cancellationUseCase.RequestCancellation(r.Context(), id, &req, user.ID)
+	if err != nil {
+		http_error.BadRequest(w, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Solicitação de cancelamento criada com sucesso",
+		"data":    cancellationReq,
+	})
+}
+
+func (m *InitiativeModule) ListPendingCancellations(w http.ResponseWriter, r *http.Request) {
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
+	requests, err := m.cancellationUseCase.ListPendingCancellations(r.Context(), user.ID)
+	if err != nil {
+		http_error.Forbidden(w, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    requests,
+		"count":   len(requests),
+	})
+}
+
+func (m *InitiativeModule) ReviewCancellation(w http.ResponseWriter, r *http.Request) {
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		http_error.BadRequest(w, "ID inválido")
+		return
+	}
+
+	var req entities.ReviewCancellationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http_error.BadRequest(w, "Payload inválido")
+		return
+	}
+
+	if err := m.cancellationUseCase.ReviewCancellation(r.Context(), id, &req, user.ID); err != nil {
+		http_error.BadRequest(w, err.Error())
+		return
+	}
+
+	action := "reprovada"
+	if req.Approved {
+		action = "aprovada e a iniciativa foi cancelada"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Solicitação de cancelamento %s", action),
 	})
 }
