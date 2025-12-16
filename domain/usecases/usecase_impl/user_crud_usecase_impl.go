@@ -47,7 +47,7 @@ func (uc *UserCrudUseCaseImpl) CreateUser(ctx context.Context, req *entities.Cre
 	// Hash da senha
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao criptografar senha: %w", err)
+		return nil, fmt.Errorf("erro ao criptografar senha:   %w", err)
 	}
 
 	// Criar usuário
@@ -55,6 +55,7 @@ func (uc *UserCrudUseCaseImpl) CreateUser(ctx context.Context, req *entities.Cre
 		Email:    req.Email,
 		Name:     req.Name,
 		Password: string(hashedPassword),
+		SectorID: req.SectorID, // NOVO
 	}
 
 	if err := uc.authRepo.CreateUser(ctx, user); err != nil {
@@ -93,6 +94,11 @@ func (uc *UserCrudUseCaseImpl) UpdateUser(ctx context.Context, userID int64, req
 		user.Name = *req.Name
 	}
 
+	// NOVO: Atualizar setor (aceita null explicitamente)
+	if req.SectorID != nil {
+		user.SectorID = req.SectorID
+	}
+
 	// Atualizar no banco
 	if err := uc.authRepo.UpdateUser(ctx, user); err != nil {
 		return nil, fmt.Errorf("erro ao atualizar usuário: %w", err)
@@ -113,7 +119,7 @@ func (uc *UserCrudUseCaseImpl) UpdateUser(ctx context.Context, userID int64, req
 		// Adicionar novos tipos
 		for _, typeID := range *req.TypeIDs {
 			if err := uc.permRepo.AssignUserType(ctx, userID, typeID); err != nil {
-				return nil, fmt.Errorf("erro ao atribuir tipo: %w", err)
+				return nil, fmt.Errorf("erro ao atribuir tipo:   %w", err)
 			}
 		}
 	}
@@ -151,15 +157,17 @@ func (uc *UserCrudUseCaseImpl) ListUsers(ctx context.Context) ([]*entities.UserL
 	for _, user := range users {
 		userTypes, err := uc.permRepo.GetUserTypes(ctx, user.ID)
 		if err != nil {
-			return nil, fmt.Errorf("erro ao buscar tipos do usuário:  %w", err)
+			return nil, fmt.Errorf("erro ao buscar tipos do usuário:   %w", err)
 		}
 
 		result = append(result, &entities.UserListResponse{
-			ID:        user.ID,
-			Email:     user.Email,
-			Name:      user.Name,
-			UserTypes: userTypes,
-			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			ID:         user.ID,
+			Email:      user.Email,
+			Name:       user.Name,
+			UserTypes:  userTypes,
+			SectorID:   user.SectorID,   // NOVO
+			SectorName: user.SectorName, // NOVO
+			CreatedAt:  user.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
