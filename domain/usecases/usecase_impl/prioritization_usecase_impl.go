@@ -163,16 +163,16 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritizationForAllSectors(ctx c
 	// Buscar todos os setores ativos
 	sectors, err := uc.sectorRepo.ListAll(ctx, true) // true = apenas ativos
 	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar setores:  %w", err)
+		return nil, fmt.Errorf("erro ao buscar setores:   %w", err)
 	}
 
 	var sectorsWithInitiatives []*entities.PrioritizationWithInitiatives
 
 	for _, sector := range sectors {
-		// Buscar iniciativas aprovadas do setor
+		// CORRIGIDO: Buscar iniciativas aprovadas filtrando pelo NOME do setor
 		filter := &entities.InitiativeFilter{
-			SectorID: &sector.ID,
-			Status:   entities.StatusApproved,
+			Sector: sector.Name, // USAR O NOME DO SETOR, NÃO O ID
+			Status: entities.StatusApproved,
 		}
 
 		initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
@@ -218,13 +218,13 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Contex
 	// Buscar nome do setor
 	sector, err := uc.sectorRepo.GetByID(ctx, sectorID)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar setor: %w", err)
+		return nil, fmt.Errorf("erro ao buscar setor:  %w", err)
 	}
 
-	// Buscar todas as iniciativas aprovadas do setor
+	// CORRIGIDO: Buscar iniciativas aprovadas filtrando pelo NOME do setor
 	filter := &entities.InitiativeFilter{
-		SectorID: &sectorID,
-		Status:   entities.StatusApproved,
+		Sector: sector.Name, // USAR O NOME DO SETOR
+		Status: entities.StatusApproved,
 	}
 
 	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
