@@ -5,6 +5,8 @@ import (
 	contextutil "hackathon-backend/utils/context"
 	"hackathon-backend/utils/http_error"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 func NewPermissionMiddleware(permUseCase usecases.PermissionUseCase) func(http.Handler) http.Handler {
@@ -77,4 +79,28 @@ func RequireUserType(permUseCase usecases.PermissionUseCase, requiredTypes ...st
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// Helper:  Converter padrão de rota para regex
+// Exemplo: /api/private/users/{id} → /api/private/users/[^/]+
+func routePatternToRegex(pattern string) *regexp.Regexp {
+	// Escapar caracteres especiais
+	escaped := regexp.QuoteMeta(pattern)
+
+	// Substituir placeholders {xxx} por regex que captura qualquer coisa exceto /
+	regexPattern := strings.ReplaceAll(escaped, `\{[^}]+\}`, `[^/]+`)
+
+	// Corrigir:  o QuoteMeta escapa as chaves, então precisamos usar a string original
+	regexPattern = regexp.MustCompile(`\{[^}]+\}`).ReplaceAllString(pattern, `[^/]+`)
+
+	// Adicionar âncoras de início e fim
+	regexPattern = "^" + regexPattern + "$"
+
+	return regexp.MustCompile(regexPattern)
+}
+
+// Helper: Verificar se uma rota real bate com um padrão
+func matchesPattern(actualPath, pattern string) bool {
+	regex := routePatternToRegex(pattern)
+	return regex.MatchString(actualPath)
 }

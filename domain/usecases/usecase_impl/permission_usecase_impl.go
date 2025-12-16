@@ -27,7 +27,7 @@ func (uc *PermissionUseCaseImpl) GetPersonalInformation(ctx context.Context, use
 	// Buscar usuário
 	user, err := uc.authRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao buscar usuário: %w", err)
+		return nil, fmt.Errorf("erro ao buscar usuário:  %w", err)
 	}
 
 	// Buscar tipos do usuário
@@ -52,4 +52,9 @@ func (uc *PermissionUseCaseImpl) AssignUserType(ctx context.Context, userID, use
 
 func (uc *PermissionUseCaseImpl) RemoveUserType(ctx context.Context, userID, userTypeID int64) error {
 	return uc.permRepo.RemoveUserType(ctx, userID, userTypeID)
+}
+
+// NOVO: Listar todos os tipos disponíveis
+func (uc *PermissionUseCaseImpl) GetAllUserTypes(ctx context.Context) ([]*entities.UserType, error) {
+	return uc.permRepo.GetAllUserTypes(ctx)
 }

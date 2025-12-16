@@ -22,6 +22,7 @@ func NewPermissionModule(permUseCase usecases.PermissionUseCase) *PermissionModu
 
 func (m *PermissionModule) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/personal-information", m.GetPersonalInformation).Methods("GET")
+	router.HandleFunc("/user-types", m.GetAllUserTypes).Methods("GET") // NOVO
 	router.HandleFunc("/admin/users/{userId}/types/{typeId}", m.AssignUserType).Methods("POST")
 	router.HandleFunc("/admin/users/{userId}/types/{typeId}", m.RemoveUserType).Methods("DELETE")
 }
@@ -43,6 +44,21 @@ func (m *PermissionModule) GetPersonalInformation(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"data":    personalInfo,
+	})
+}
+
+// NOVO: Endpoint para listar todos os tipos disponíveis
+func (m *PermissionModule) GetAllUserTypes(w http.ResponseWriter, r *http.Request) {
+	userTypes, err := m.permUseCase.GetAllUserTypes(r.Context())
+	if err != nil {
+		http_error.InternalServerError(w, "Erro ao buscar tipos de usuário")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    userTypes,
 	})
 }
 

@@ -1,9 +1,11 @@
-package repository_impl
+package repositories
 
 import (
 	"context"
 	"database/sql"
 	"hackathon-backend/domain/entities"
+	"regexp"
+	"strings"
 )
 
 type PermissionRepositoryImpl struct {
@@ -16,7 +18,7 @@ func NewPermissionRepositoryImpl(db *sql.DB) *PermissionRepositoryImpl {
 
 func (r *PermissionRepositoryImpl) GetUserTypes(ctx context.Context, userID int64) ([]*entities.UserType, error) {
 	query := `
-		SELECT ut.id, ut.name, ut.description, ut.created_at, ut. updated_at
+		SELECT ut.id, ut.name, ut.description, ut.created_at, ut.updated_at
 		FROM user_type ut
 		INNER JOIN type_user tu ON tu.user_type_id = ut.id
 		WHERE tu.user_id = $1
@@ -44,23 +46,33 @@ func (r *PermissionRepositoryImpl) GetUserTypes(ctx context.Context, userID int6
 
 func (r *PermissionRepositoryImpl) HasPermission(ctx context.Context, userID int64, endpoint, method string) (bool, error) {
 	query := `
-		SELECT EXISTS(
-			SELECT 1
-			FROM user_type_permissions utp
-			INNER JOIN type_user tu ON tu.user_type_id = utp. user_type_id
-			WHERE tu.user_id = $1
-			AND utp.endpoint = $2
-			AND utp.method = $3
-		)
+		SELECT utp.endpoint
+		FROM user_type_permissions utp
+		INNER JOIN type_user tu ON tu.user_type_id = utp.user_type_id
+		WHERE tu.user_id = $1
+		AND utp.method = $2
 	`
 
-	var hasPermission bool
-	err := r.db.QueryRowContext(ctx, query, userID, endpoint, method).Scan(&hasPermission)
+	rows, err := r.db.QueryContext(ctx, query, userID, method)
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
-	return hasPermission, nil
+	// Buscar todos os padrões de endpoint que o usuário tem permissão
+	for rows.Next() {
+		var pattern string
+		if err := rows.Scan(&pattern); err != nil {
+			return false, err
+		}
+
+		// Verificar se o endpoint atual bate com o padrão
+		if matchesPattern(endpoint, pattern) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (r *PermissionRepositoryImpl) AssignUserType(ctx context.Context, userID, userTypeID int64) error {
@@ -108,4 +120,18 @@ func (r *PermissionRepositoryImpl) GetAllUserTypes(ctx context.Context) ([]*enti
 	}
 
 	return userTypes, nil
+}
+
+// Helper: Verificar se uma rota real bate com um padrão
+func matchesPattern(actualPath, pattern string) bool {
+	// Converter o padrão para regex
+	// Exemplo: /api/private/users/{id} → ^/api/private/users/[^/]+$
+	regexPattern := regexp.QuoteMeta(pattern)
+	regexPattern = strings.ReplaceAll(regexPattern, `\{`, `{`)
+	regexPattern = strings.ReplaceAll(regexPattern, `\}`, `}`)
+	regexPattern = regexp.MustCompile(`\{[^}]+\}`).ReplaceAllString(regexPattern, `[^/]+`)
+	regexPattern = "^" + regexPattern + "$"
+
+	regex := regexp.MustCompile(regexPattern)
+	return regex.MatchString(actualPath)
 }

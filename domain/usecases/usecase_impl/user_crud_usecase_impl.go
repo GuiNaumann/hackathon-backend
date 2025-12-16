@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"hackathon-backend/domain/entities"
 	"hackathon-backend/infrastructure/repositories"
 	"regexp"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserCrudUseCaseImpl struct {
@@ -36,6 +37,11 @@ func (uc *UserCrudUseCaseImpl) CreateUser(ctx context.Context, req *entities.Cre
 	// Validar senha
 	if len(req.Password) < 6 {
 		return nil, errors.New("senha deve ter no mínimo 6 caracteres")
+	}
+
+	// Validar tipos (obrigatório pelo menos 1)
+	if len(req.TypeIDs) == 0 {
+		return nil, errors.New("é necessário atribuir pelo menos um tipo ao usuário")
 	}
 
 	// Hash da senha
@@ -94,6 +100,11 @@ func (uc *UserCrudUseCaseImpl) UpdateUser(ctx context.Context, userID int64, req
 
 	// Atualizar tipos se fornecidos
 	if req.TypeIDs != nil {
+		// Validar que não está removendo todos os tipos
+		if len(*req.TypeIDs) == 0 {
+			return nil, errors.New("usuário deve ter pelo menos um tipo")
+		}
+
 		// Remover todos os tipos atuais
 		if err := uc.authRepo.RemoveAllUserTypes(ctx, userID); err != nil {
 			return nil, fmt.Errorf("erro ao remover tipos: %w", err)
@@ -140,7 +151,7 @@ func (uc *UserCrudUseCaseImpl) ListUsers(ctx context.Context) ([]*entities.UserL
 	for _, user := range users {
 		userTypes, err := uc.permRepo.GetUserTypes(ctx, user.ID)
 		if err != nil {
-			return nil, fmt.Errorf("erro ao buscar tipos do usuário: %w", err)
+			return nil, fmt.Errorf("erro ao buscar tipos do usuário:  %w", err)
 		}
 
 		result = append(result, &entities.UserListResponse{
@@ -187,6 +198,6 @@ func (uc *UserCrudUseCaseImpl) ChangePassword(ctx context.Context, userID int64,
 }
 
 func isValidEmail(email string) bool {
-	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	emailRegex, _ := regexp.Compile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return emailRegex.MatchString(email)
 }
