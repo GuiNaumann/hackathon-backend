@@ -107,7 +107,7 @@ func (uc *InitiativeUseCaseImpl) ListSubmittedInitiatives(ctx context.Context, u
 		listItem := &entities.InitiativeListResponse{
 			ID:          initiative.ID,
 			Title:       initiative.Title,
-			Description: truncateDescription(initiative.Description, 150),
+			Description: initiative.Description,
 			Status:      initiative.Status,
 			Type:        initiative.Type,
 			Priority:    initiative.Priority,
@@ -301,7 +301,7 @@ func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *en
 		listItem := &entities.InitiativeListResponse{
 			ID:          initiative.ID,
 			Title:       initiative.Title,
-			Description: truncateDescription(initiative.Description, 150),
+			Description: initiative.Description,
 			Status:      initiative.Status,
 			Type:        initiative.Type,
 			Priority:    initiative.Priority,

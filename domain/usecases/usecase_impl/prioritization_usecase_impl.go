@@ -270,7 +270,7 @@ func (uc *PrioritizationUseCaseImpl) buildPrioritizationWithInitiatives(ctx cont
 		initiatives = append(initiatives, &entities.InitiativeListResponse{
 			ID:          initiative.ID,
 			Title:       initiative.Title,
-			Description: truncateDescription(initiative.Description, 150),
+			Description: initiative.Description,
 			Status:      initiative.Status,
 			Type:        initiative.Type,
 			Priority:    initiative.Priority,
@@ -312,7 +312,7 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Contex
 		initiativesList = append(initiativesList, &entities.InitiativeListResponse{
 			ID:          initiative.ID,
 			Title:       initiative.Title,
-			Description: truncateDescription(initiative.Description, 150),
+			Description: initiative.Description,
 			Status:      initiative.Status,
 			Type:        initiative.Type,
 			Priority:    initiative.Priority,
