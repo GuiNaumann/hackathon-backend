@@ -11,12 +11,18 @@ import (
 
 type InitiativeUseCaseImpl struct {
 	initiativeRepo repositories.InitiativeRepository
+	historyRepo    repositories.InitiativeHistoryRepository // NOVO
 	permRepo       repositories.PermissionRepository
 }
 
-func NewInitiativeUseCaseImpl(initiativeRepo repositories.InitiativeRepository, permRepo repositories.PermissionRepository) *InitiativeUseCaseImpl {
+func NewInitiativeUseCaseImpl(
+	initiativeRepo repositories.InitiativeRepository,
+	historyRepo repositories.InitiativeHistoryRepository, // NOVO
+	permRepo repositories.PermissionRepository,
+) *InitiativeUseCaseImpl {
 	return &InitiativeUseCaseImpl{
 		initiativeRepo: initiativeRepo,
+		historyRepo:    historyRepo, // NOVO
 		permRepo:       permRepo,
 	}
 }
@@ -59,7 +65,7 @@ func (uc *InitiativeUseCaseImpl) CreateInitiative(ctx context.Context, req *enti
 		Title:       req.Title,
 		Description: req.Description,
 		Benefits:    req.Benefits,
-		Status:      entities.StatusSubmitted, // Status inicial
+		Status:      entities.StatusSubmitted, // Status inicial:  Submetida
 		Type:        req.Type,
 		Priority:    req.Priority,
 		Sector:      req.Sector,
@@ -68,10 +74,98 @@ func (uc *InitiativeUseCaseImpl) CreateInitiative(ctx context.Context, req *enti
 	}
 
 	if err := uc.initiativeRepo.Create(ctx, initiative); err != nil {
-		return nil, fmt.Errorf("erro ao criar iniciativa: %w", err)
+		return nil, fmt.Errorf("erro ao criar iniciativa:  %w", err)
 	}
 
 	return initiative, nil
+}
+
+// NOVO: Listar iniciativas submetidas (aguardando aprovação)
+func (uc *InitiativeUseCaseImpl) ListSubmittedInitiatives(ctx context.Context, userID int64) ([]*entities.InitiativeListResponse, error) {
+	// Verificar se é admin ou manager
+	isAdminOrManager, err := uc.isAdminOrManager(ctx, userID)
+	if err != nil || !isAdminOrManager {
+		return nil, errors.New("apenas administradores e gerentes podem visualizar iniciativas submetidas")
+	}
+
+	// Filtro para buscar apenas iniciativas "Submetidas"
+	filter := &entities.InitiativeFilter{
+		Status: entities.StatusSubmitted,
+	}
+
+	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao listar iniciativas submetidas: %w", err)
+	}
+
+	// Converter para response
+	var response []*entities.InitiativeListResponse
+	for _, initiative := range initiatives {
+		listItem := &entities.InitiativeListResponse{
+			ID:          initiative.ID,
+			Title:       initiative.Title,
+			Description: truncateDescription(initiative.Description, 150),
+			Status:      initiative.Status,
+			Type:        initiative.Type,
+			Priority:    initiative.Priority,
+			Sector:      initiative.Sector,
+			OwnerName:   initiative.OwnerName,
+			Date:        formatDate(initiative.CreatedAt),
+		}
+
+		if initiative.CancellationRequest != nil {
+			listItem.CancellationRequest = initiative.CancellationRequest
+		}
+
+		response = append(response, listItem)
+	}
+
+	return response, nil
+}
+
+// NOVO: Aprovar ou reprovar iniciativa
+func (uc *InitiativeUseCaseImpl) ReviewInitiative(ctx context.Context, initiativeID int64, req *entities.ReviewInitiativeRequest, userID int64) error {
+	// Verificar se é admin ou manager
+	isAdminOrManager, err := uc.isAdminOrManager(ctx, userID)
+	if err != nil || !isAdminOrManager {
+		return errors.New("apenas administradores e gerentes podem revisar iniciativas")
+	}
+
+	// Validar justificativa
+	if len(req.Reason) < 10 {
+		return errors.New("justificativa deve ter no mínimo 10 caracteres")
+	}
+
+	// Buscar iniciativa
+	initiative, err := uc.initiativeRepo.GetByID(ctx, initiativeID)
+	if err != nil {
+		return errors.New("iniciativa não encontrada")
+	}
+
+	// Verificar se está no status "Submetida"
+	if initiative.Status != entities.StatusSubmitted {
+		return errors.New("apenas iniciativas submetidas podem ser revisadas")
+	}
+
+	var newStatus string
+	var historyReason string
+
+	if req.Approved {
+		// Aprovado:  muda para "Em Análise"
+		newStatus = entities.StatusInAnalysis
+		historyReason = fmt.Sprintf("✅ Iniciativa aprovada:  %s", req.Reason)
+	} else {
+		// Reprovado: muda para "Reprovada"
+		newStatus = entities.StatusRejected
+		historyReason = fmt.Sprintf("❌ Iniciativa reprovada:  %s", req.Reason)
+	}
+
+	// Atualizar status e registrar no histórico
+	if err := uc.initiativeRepo.ChangeStatusWithUser(ctx, initiativeID, newStatus, historyReason, userID); err != nil {
+		return fmt.Errorf("erro ao revisar iniciativa: %w", err)
+	}
+
+	return nil
 }
 
 func (uc *InitiativeUseCaseImpl) UpdateInitiative(ctx context.Context, initiativeID int64, req *entities.UpdateInitiativeRequest, userID int64) (*entities.Initiative, error) {
@@ -137,7 +231,7 @@ func (uc *InitiativeUseCaseImpl) UpdateInitiative(ctx context.Context, initiativ
 	}
 
 	if err := uc.initiativeRepo.Update(ctx, initiative); err != nil {
-		return nil, fmt.Errorf("erro ao atualizar iniciativa: %w", err)
+		return nil, fmt.Errorf("erro ao atualizar iniciativa:  %w", err)
 	}
 
 	return initiative, nil
@@ -159,12 +253,10 @@ func (uc *InitiativeUseCaseImpl) DeleteInitiative(ctx context.Context, initiativ
 	return uc.initiativeRepo.Delete(ctx, initiativeID)
 }
 
-// ATUALIZADO: Agora usa GetByIDWithCancellation
 func (uc *InitiativeUseCaseImpl) GetInitiativeByID(ctx context.Context, initiativeID int64) (*entities.Initiative, error) {
 	return uc.initiativeRepo.GetByIDWithCancellation(ctx, initiativeID)
 }
 
-// ATUALIZADO: Agora usa ListAllWithCancellation
 func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.InitiativeListResponse, error) {
 	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
 	if err != nil {
@@ -186,7 +278,6 @@ func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *en
 			Date:        formatDate(initiative.CreatedAt),
 		}
 
-		// Adicionar informação de cancelamento se existir
 		if initiative.CancellationRequest != nil {
 			listItem.CancellationRequest = initiative.CancellationRequest
 		}
@@ -226,6 +317,22 @@ func (uc *InitiativeUseCaseImpl) isAdmin(ctx context.Context, userID int64) (boo
 
 	for _, userType := range userTypes {
 		if userType.Name == "admin" {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// NOVO: Helper para verificar se é admin ou manager
+func (uc *InitiativeUseCaseImpl) isAdminOrManager(ctx context.Context, userID int64) (bool, error) {
+	userTypes, err := uc.permRepo.GetUserTypes(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+
+	for _, userType := range userTypes {
+		if userType.Name == "admin" || userType.Name == "manager" {
 			return true, nil
 		}
 	}

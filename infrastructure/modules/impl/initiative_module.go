@@ -34,10 +34,12 @@ func NewInitiativeModule(
 func (m *InitiativeModule) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/initiatives", m.CreateInitiative).Methods("POST")
 	router.HandleFunc("/initiatives", m.ListInitiatives).Methods("GET")
+	router.HandleFunc("/initiatives/submitted", m.ListSubmittedInitiatives).Methods("GET") // NOVO
 	router.HandleFunc("/initiatives/{id}", m.GetInitiative).Methods("GET")
 	router.HandleFunc("/initiatives/{id}", m.UpdateInitiative).Methods("PUT")
 	router.HandleFunc("/initiatives/{id}", m.DeleteInitiative).Methods("DELETE")
 	router.HandleFunc("/initiatives/{id}/status", m.ChangeStatus).Methods("PATCH")
+	router.HandleFunc("/initiatives/{id}/review", m.ReviewInitiative).Methods("POST") // NOVO
 	router.HandleFunc("/initiatives/{id}/history", m.GetHistory).Methods("GET")
 	router.HandleFunc("/initiatives/{id}/request-cancellation", m.RequestCancellation).Methods("POST")
 	router.HandleFunc("/my-initiatives", m.GetMyInitiatives).Methods("GET")
@@ -70,7 +72,7 @@ func (m *InitiativeModule) CreateInitiative(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
-		"message": "Iniciativa criada com sucesso",
+		"message": "Iniciativa criada com sucesso e enviada para aprovação",
 		"data":    initiative,
 	})
 }
@@ -96,6 +98,66 @@ func (m *InitiativeModule) ListInitiatives(w http.ResponseWriter, r *http.Reques
 		"success": true,
 		"data":    initiatives,
 		"count":   len(initiatives),
+	})
+}
+
+// NOVO: Listar iniciativas submetidas (para aprovação)
+func (m *InitiativeModule) ListSubmittedInitiatives(w http.ResponseWriter, r *http.Request) {
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
+	initiatives, err := m.initiativeUseCase.ListSubmittedInitiatives(r.Context(), user.ID)
+	if err != nil {
+		http_error.Forbidden(w, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data":    initiatives,
+		"count":   len(initiatives),
+	})
+}
+
+// NOVO: Aprovar ou reprovar iniciativa
+func (m *InitiativeModule) ReviewInitiative(w http.ResponseWriter, r *http.Request) {
+	user, ok := contextutil.GetUserFromContext(r.Context())
+	if !ok {
+		http_error.Unauthorized(w, "Usuário não autenticado")
+		return
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		http_error.BadRequest(w, "ID inválido")
+		return
+	}
+
+	var req entities.ReviewInitiativeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http_error.BadRequest(w, "Payload inválido")
+		return
+	}
+
+	if err := m.initiativeUseCase.ReviewInitiative(r.Context(), id, &req, user.ID); err != nil {
+		http_error.BadRequest(w, err.Error())
+		return
+	}
+
+	action := "reprovada"
+	if req.Approved {
+		action = "aprovada e movida para análise"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Iniciativa %s com sucesso", action),
 	})
 }
 
@@ -233,7 +295,6 @@ func (m *InitiativeModule) GetMyInitiatives(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-// Adicionar o handler:
 func (m *InitiativeModule) GetHistory(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.ParseInt(vars["id"], 10, 64)

@@ -105,3 +105,8 @@ const (
 	PriorityMedium = "Média"
 	PriorityLow    = "Baixa"
 )
+
+type ReviewInitiativeRequest struct {
+	Approved bool   `json:"approved"` // true = aprovar, false = reprovar
+	Reason   string `json:"reason"`   // Justificativa obrigatória
+}
