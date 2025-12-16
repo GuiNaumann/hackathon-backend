@@ -426,29 +426,3 @@ func isValidStatus(s string) bool {
 	}
 	return false
 }
-
-func truncateDescription(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}
-
-func formatDate(t time.Time) string {
-	months := map[time.Month]string{
-		time.January:   "jan",
-		time.February:  "fev",
-		time.March:     "mar",
-		time.April:     "abr",
-		time.May:       "mai",
-		time.June:      "jun",
-		time.July:      "jul",
-		time.August:    "ago",
-		time.September: "set",
-		time.October:   "out",
-		time.November:  "nov",
-		time.December:  "dez",
-	}
-
-	return fmt.Sprintf("%02d de %s, %d", t.Day(), months[t.Month()], t.Year())
-}
