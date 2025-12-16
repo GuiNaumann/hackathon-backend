@@ -13,17 +13,20 @@ type InitiativeUseCaseImpl struct {
 	initiativeRepo repositories.InitiativeRepository
 	historyRepo    repositories.InitiativeHistoryRepository
 	permRepo       repositories.PermissionRepository
+	authRepo       repositories.AuthRepository // NOVO: para buscar setor do usuário
 }
 
 func NewInitiativeUseCaseImpl(
 	initiativeRepo repositories.InitiativeRepository,
 	historyRepo repositories.InitiativeHistoryRepository,
 	permRepo repositories.PermissionRepository,
+	authRepo repositories.AuthRepository, // NOVO
 ) *InitiativeUseCaseImpl {
 	return &InitiativeUseCaseImpl{
 		initiativeRepo: initiativeRepo,
 		historyRepo:    historyRepo,
 		permRepo:       permRepo,
+		authRepo:       authRepo, // NOVO
 	}
 }
 
@@ -257,7 +260,36 @@ func (uc *InitiativeUseCaseImpl) GetInitiativeByID(ctx context.Context, initiati
 	return uc.initiativeRepo.GetByIDWithCancellation(ctx, initiativeID)
 }
 
-func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.InitiativeListResponse, error) {
+func (uc *InitiativeUseCaseImpl) ListInitiatives(ctx context.Context, filter *entities.InitiativeFilter, userID int64) ([]*entities.InitiativeListResponse, error) {
+	// Verificar se é admin ou manager
+	isAdminOrManager, err := uc.isAdminOrManager(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao verificar permissões: %w", err)
+	}
+
+	// Se for usuário normal (não admin/manager), filtrar pelo setor dele
+	if !isAdminOrManager {
+		// Buscar informações do usuário para pegar o sector_id
+		user, err := uc.authRepo.GetUserByID(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("erro ao buscar usuário:  %w", err)
+		}
+
+		// Se o usuário tiver um setor, aplicar filtro
+		if user.SectorID != nil {
+			// Criar novo filtro com o sector_id do usuário
+			if filter == nil {
+				filter = &entities.InitiativeFilter{}
+			}
+			filter.SectorID = user.SectorID // NOVO: usar sector_id em vez de sector (nome)
+		} else {
+			// Se o usuário não tem setor, ele não vê iniciativas de outros
+			// Retornar apenas as dele mesmo
+			return []*entities.InitiativeListResponse{}, nil
+		}
+	}
+
+	// Admin/Manager vê todas (ou filtra pelo setor que escolheu manualmente)
 	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao listar iniciativas: %w", err)

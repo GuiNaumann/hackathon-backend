@@ -65,6 +65,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		initiativeRepository,
 		initiativeHistoryRepository,
 		permRepository,
+		authRepository, // ADICIONAR authRepository aqui
 	)
 	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
 	initiativeHistoryUseCase := usecase_impl.NewInitiativeHistoryUseCaseImpl(initiativeHistoryRepository)

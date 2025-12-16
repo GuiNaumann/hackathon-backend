@@ -278,10 +278,11 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 }
 
 // NOVO: ListAll com informação de cancelamento
+// ATUALIZADO: ListAllWithCancellation com filtro por sector_id
 func (r *InitiativeRepositoryImpl) ListAllWithCancellation(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.Initiative, error) {
 	query := `
 		SELECT i.id, i.title, i.description, i.benefits, i.status, i.type, i.priority, i.sector, 
-		       i.owner_id, u.name as owner_name, i.deadline, i. created_at, i.updated_at,
+		       i.owner_id, u.name as owner_name, i.deadline, i.created_at, i.updated_at,
 		       cr.id, cr.status, cr.requested_by_user_id, u2.name, cr.reason, 
 		       cr.reviewed_by_user_id, u3.name, cr.review_reason, cr.created_at, cr.reviewed_at
 		FROM initiatives i
@@ -303,19 +304,19 @@ func (r *InitiativeRepositoryImpl) ListAllWithCancellation(ctx context.Context, 
 
 	if filter != nil {
 		if filter.Search != "" {
-			query += fmt.Sprintf(" AND (LOWER(i. title) LIKE $%d OR LOWER(i.description) LIKE $%d)", argCount, argCount)
+			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i. description) LIKE $%d)", argCount, argCount)
 			args = append(args, "%"+strings.ToLower(filter.Search)+"%")
 			argCount++
 		}
 
 		if filter.Status != "" {
-			query += fmt.Sprintf(" AND i.status = $%d", argCount)
+			query += fmt.Sprintf(" AND i. status = $%d", argCount)
 			args = append(args, filter.Status)
 			argCount++
 		}
 
 		if filter.Type != "" {
-			query += fmt.Sprintf(" AND i. type = $%d", argCount)
+			query += fmt.Sprintf(" AND i.type = $%d", argCount)
 			args = append(args, filter.Type)
 			argCount++
 		}
@@ -323,6 +324,13 @@ func (r *InitiativeRepositoryImpl) ListAllWithCancellation(ctx context.Context, 
 		if filter.Sector != "" {
 			query += fmt.Sprintf(" AND i.sector = $%d", argCount)
 			args = append(args, filter.Sector)
+			argCount++
+		}
+
+		// NOVO: Filtrar por sector_id dos owners (usuários do mesmo setor)
+		if filter.SectorID != nil {
+			query += fmt.Sprintf(" AND u.sector_id = $%d", argCount)
+			args = append(args, *filter.SectorID)
 			argCount++
 		}
 
