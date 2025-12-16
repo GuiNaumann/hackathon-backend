@@ -24,7 +24,8 @@ type SetupConfig struct {
 	InitiativeHistoryRepository *repository_impl.InitiativeHistoryRepositoryImpl
 	CancellationRepository      *repository_impl.CancellationRepositoryImpl
 	AIRepository                *repository_impl.AIRepositoryImpl
-	SectorRepository            *repository_impl.SectorRepositoryImpl // NOVO
+	SectorRepository            *repository_impl.SectorRepositoryImpl
+	PrioritizationRepository    *repository_impl.PrioritizationRepositoryImpl // NOVO
 	AuthUseCase                 *usecase_impl.AuthUseCaseImpl
 	PermissionUseCase           *usecase_impl.PermissionUseCaseImpl
 	UserCrudUseCase             *usecase_impl.UserCrudUseCaseImpl
@@ -33,7 +34,8 @@ type SetupConfig struct {
 	InitiativeHistoryUseCase    *usecase_impl.InitiativeHistoryUseCaseImpl
 	CancellationUseCase         *usecase_impl.CancellationUseCaseImpl
 	AIUseCase                   *usecase_impl.AIUseCaseImpl
-	SectorUseCase               *usecase_impl.SectorUseCaseImpl // NOVO
+	SectorUseCase               *usecase_impl.SectorUseCaseImpl
+	PrioritizationUseCase       *usecase_impl.PrioritizationUseCaseImpl // NOVO
 }
 
 func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*SetupConfig, error) {
@@ -54,7 +56,8 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeHistoryRepository := repository_impl.NewInitiativeHistoryRepositoryImpl(db)
 	cancellationRepository := repository_impl.NewCancellationRepositoryImpl(db)
 	aiRepository := repository_impl.NewAIRepositoryImpl(settings)
-	sectorRepository := repository_impl.NewSectorRepositoryImpl(db) // NOVO
+	sectorRepository := repository_impl.NewSectorRepositoryImpl(db)
+	prioritizationRepository := repository_impl.NewPrioritizationRepositoryImpl(db) // NOVO
 
 	// 3. Inicializar UseCases
 	log.Println("⚙️  Inicializando use cases...")
@@ -65,7 +68,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		initiativeRepository,
 		initiativeHistoryRepository,
 		permRepository,
-		authRepository, // ADICIONAR authRepository aqui
+		authRepository,
 	)
 	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
 	initiativeHistoryUseCase := usecase_impl.NewInitiativeHistoryUseCaseImpl(initiativeHistoryRepository)
@@ -78,7 +81,15 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	)
 
 	aiUseCase := usecase_impl.NewAIUseCaseImpl(aiRepository)
-	sectorUseCase := usecase_impl.NewSectorUseCaseImpl(sectorRepository) // NOVO
+	sectorUseCase := usecase_impl.NewSectorUseCaseImpl(sectorRepository)
+
+	// NOVO: PrioritizationUseCase
+	prioritizationUseCase := usecase_impl.NewPrioritizationUseCaseImpl(
+		prioritizationRepository,
+		initiativeRepository,
+		authRepository,
+		permRepository,
+	)
 
 	// 4. Inicializar Módulos HTTP
 	log.Println("🌐 Inicializando módulos HTTP...")
@@ -88,7 +99,8 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeModule := module_impl.NewInitiativeModule(initiativeUseCase, initiativeHistoryUseCase, cancellationUseCase)
 	commentModule := module_impl.NewCommentModule(commentUseCase)
 	aiModule := module_impl.NewAIModule(aiUseCase)
-	sectorModule := module_impl.NewSectorModule(sectorUseCase) // NOVO
+	sectorModule := module_impl.NewSectorModule(sectorUseCase)
+	prioritizationModule := module_impl.NewPrioritizationModule(prioritizationUseCase) // NOVO
 	healthModule := module_impl.NewHealthModule()
 
 	// 5. Registrar Rotas Públicas
@@ -109,7 +121,8 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeModule.RegisterRoutes(privateRouter)
 	commentModule.RegisterRoutes(privateRouter)
 	aiModule.RegisterRoutes(privateRouter)
-	sectorModule.RegisterRoutes(privateRouter) // NOVO
+	sectorModule.RegisterRoutes(privateRouter)
+	prioritizationModule.RegisterRoutes(privateRouter) // NOVO
 
 	log.Println("✅ Setup concluído com sucesso!")
 
@@ -124,6 +137,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		CancellationRepository:      cancellationRepository,
 		AIRepository:                aiRepository,
 		SectorRepository:            sectorRepository,
+		PrioritizationRepository:    prioritizationRepository,
 		AuthUseCase:                 authUseCase,
 		PermissionUseCase:           permUseCase,
 		UserCrudUseCase:             userCrudUseCase,
@@ -133,6 +147,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		CancellationUseCase:         cancellationUseCase,
 		AIUseCase:                   aiUseCase,
 		SectorUseCase:               sectorUseCase,
+		PrioritizationUseCase:       prioritizationUseCase,
 	}, nil
 }
 
