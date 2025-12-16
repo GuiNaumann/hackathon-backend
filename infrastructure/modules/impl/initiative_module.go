@@ -39,12 +39,12 @@ func (m *InitiativeModule) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/initiatives/{id}", m.DeleteInitiative).Methods("DELETE")
 	router.HandleFunc("/initiatives/{id}/status", m.ChangeStatus).Methods("PATCH")
 	router.HandleFunc("/initiatives/{id}/history", m.GetHistory).Methods("GET")
-	router.HandleFunc("/initiatives/{id}/request-cancellation", m.RequestCancellation).Methods("POST") // NOVO
+	router.HandleFunc("/initiatives/{id}/request-cancellation", m.RequestCancellation).Methods("POST")
 	router.HandleFunc("/my-initiatives", m.GetMyInitiatives).Methods("GET")
 
 	// Rotas de gerenciamento de cancelamentos
-	router.HandleFunc("/cancellation-requests", m.ListPendingCancellations).Methods("GET")        // NOVO
-	router.HandleFunc("/cancellation-requests/{id}/review", m.ReviewCancellation).Methods("POST") // NOVO
+	router.HandleFunc("/cancellation-requests", m.ListPendingCancellations).Methods("GET")
+	router.HandleFunc("/cancellation-requests/{id}/review", m.ReviewCancellation).Methods("POST")
 }
 
 func (m *InitiativeModule) CreateInitiative(w http.ResponseWriter, r *http.Request) {

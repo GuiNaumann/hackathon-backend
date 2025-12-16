@@ -11,17 +11,20 @@ import (
 type CancellationUseCaseImpl struct {
 	cancellationRepo repositories.CancellationRepository
 	initiativeRepo   repositories.InitiativeRepository
+	historyRepo      repositories.InitiativeHistoryRepository // NOVO
 	permRepo         repositories.PermissionRepository
 }
 
 func NewCancellationUseCaseImpl(
 	cancellationRepo repositories.CancellationRepository,
 	initiativeRepo repositories.InitiativeRepository,
+	historyRepo repositories.InitiativeHistoryRepository, // NOVO
 	permRepo repositories.PermissionRepository,
 ) *CancellationUseCaseImpl {
 	return &CancellationUseCaseImpl{
 		cancellationRepo: cancellationRepo,
 		initiativeRepo:   initiativeRepo,
+		historyRepo:      historyRepo, // NOVO
 		permRepo:         permRepo,
 	}
 }
@@ -61,6 +64,20 @@ func (uc *CancellationUseCaseImpl) RequestCancellation(ctx context.Context, init
 		return nil, fmt.Errorf("erro ao criar solicitação de cancelamento: %w", err)
 	}
 
+	// NOVO: Registrar no histórico que foi solicitado cancelamento
+	history := &entities.InitiativeHistory{
+		InitiativeID: initiativeID,
+		UserID:       userID,
+		OldStatus:    initiative.Status,
+		NewStatus:    initiative.Status, // Status não muda ainda
+		Reason:       fmt.Sprintf("⚠️ Solicitação de cancelamento criada:  %s", req.Reason),
+	}
+
+	if err := uc.historyRepo.Create(ctx, history); err != nil {
+		// Log do erro mas não falha a operação
+		fmt.Printf("Erro ao registrar histórico de solicitação:  %v\n", err)
+	}
+
 	return uc.cancellationRepo.GetByID(ctx, cancellationReq.ID)
 }
 
@@ -87,6 +104,12 @@ func (uc *CancellationUseCaseImpl) ReviewCancellation(ctx context.Context, reque
 		return errors.New("esta solicitação já foi revisada")
 	}
 
+	// Buscar iniciativa para pegar status atual
+	initiative, err := uc.initiativeRepo.GetByID(ctx, cancellationReq.InitiativeID)
+	if err != nil {
+		return errors.New("iniciativa não encontrada")
+	}
+
 	// Definir novo status
 	newStatus := entities.CancellationStatusRejected
 	if req.Approved {
@@ -95,18 +118,30 @@ func (uc *CancellationUseCaseImpl) ReviewCancellation(ctx context.Context, reque
 
 	// Atualizar solicitação
 	if err := uc.cancellationRepo.UpdateStatus(ctx, requestID, newStatus, userID, req.Reason); err != nil {
-		return fmt.Errorf("erro ao atualizar solicitação:   %w", err)
+		return fmt.Errorf("erro ao atualizar solicitação: %w", err)
 	}
 
-	// Se aprovado, cancelar a iniciativa
+	// ATUALIZADO: Registrar no histórico conforme aprovado ou reprovado
 	if req.Approved {
-		statusReq := &entities.ChangeInitiativeStatusRequest{
-			Status: entities.StatusCancelled,
-			Reason: fmt.Sprintf("Cancelamento aprovado:  %s", req.Reason),
+		// Aprovado: Cancelar a iniciativa e registrar no histórico
+		statusChangeReason := fmt.Sprintf("✅ Cancelamento aprovado: %s", req.Reason)
+
+		if err := uc.initiativeRepo.ChangeStatusWithUser(ctx, cancellationReq.InitiativeID, entities.StatusCancelled, statusChangeReason, userID); err != nil {
+			return fmt.Errorf("erro ao cancelar iniciativa:  %w", err)
+		}
+	} else {
+		// Reprovado: Registrar no histórico mas não muda status da iniciativa
+		history := &entities.InitiativeHistory{
+			InitiativeID: cancellationReq.InitiativeID,
+			UserID:       userID,
+			OldStatus:    initiative.Status,
+			NewStatus:    initiative.Status, // Status continua o mesmo
+			Reason:       fmt.Sprintf("❌ Solicitação de cancelamento reprovada: %s", req.Reason),
 		}
 
-		if err := uc.initiativeRepo.ChangeStatusWithUser(ctx, cancellationReq.InitiativeID, statusReq.Status, statusReq.Reason, userID); err != nil {
-			return fmt.Errorf("erro ao cancelar iniciativa:  %w", err)
+		if err := uc.historyRepo.Create(ctx, history); err != nil {
+			// Log do erro mas não falha a operação
+			fmt.Printf("Erro ao registrar histórico de reprovação: %v\n", err)
 		}
 	}
 

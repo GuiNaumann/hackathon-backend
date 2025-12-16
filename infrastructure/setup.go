@@ -21,13 +21,15 @@ type SetupConfig struct {
 	PermRepository              *repositories.PermissionRepositoryImpl
 	InitiativeRepository        *repository_impl.InitiativeRepositoryImpl
 	CommentRepository           *repository_impl.CommentRepositoryImpl
+	InitiativeHistoryRepository *repository_impl.InitiativeHistoryRepositoryImpl
+	CancellationRepository      *repository_impl.CancellationRepositoryImpl // NOVO
 	AuthUseCase                 *usecase_impl.AuthUseCaseImpl
 	PermissionUseCase           *usecase_impl.PermissionUseCaseImpl
 	UserCrudUseCase             *usecase_impl.UserCrudUseCaseImpl
 	InitiativeUseCase           *usecase_impl.InitiativeUseCaseImpl
 	CommentUseCase              *usecase_impl.CommentUseCaseImpl
-	InitiativeHistoryRepository *repository_impl.InitiativeHistoryRepositoryImpl
 	InitiativeHistoryUseCase    *usecase_impl.InitiativeHistoryUseCaseImpl
+	CancellationUseCase         *usecase_impl.CancellationUseCaseImpl // NOVO
 }
 
 func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*SetupConfig, error) {
@@ -36,10 +38,11 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	// 1. Conectar ao banco de dados
 	db, err := NewDatabaseConnection(settings)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao conectar ao banco: %w", err)
+		return nil, fmt.Errorf("erro ao conectar ao banco:  %w", err)
 	}
 
 	// 2. Inicializar Repositories
+	log.Println("📦 Inicializando repositories...")
 	authRepository := repository_impl.NewAuthRepositoryImpl(db)
 	permRepository := repositories.NewPermissionRepositoryImpl(db)
 	initiativeRepository := repository_impl.NewInitiativeRepositoryImpl(db)
@@ -48,15 +51,24 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	cancellationRepository := repository_impl.NewCancellationRepositoryImpl(db)
 
 	// 3. Inicializar UseCases
+	log.Println("⚙️  Inicializando use cases...")
 	authUseCase := usecase_impl.NewAuthUseCaseImpl(authRepository, settings)
 	permUseCase := usecase_impl.NewPermissionUseCaseImpl(permRepository, authRepository)
 	userCrudUseCase := usecase_impl.NewUserCrudUseCaseImpl(authRepository, permRepository)
 	initiativeUseCase := usecase_impl.NewInitiativeUseCaseImpl(initiativeRepository, permRepository)
 	commentUseCase := usecase_impl.NewCommentUseCaseImpl(commentRepository, initiativeRepository, permRepository)
 	initiativeHistoryUseCase := usecase_impl.NewInitiativeHistoryUseCaseImpl(initiativeHistoryRepository)
-	cancellationUseCase := usecase_impl.NewCancellationUseCaseImpl(cancellationRepository, initiativeRepository, permRepository)
+
+	// CancellationUseCase com historyRepo incluído
+	cancellationUseCase := usecase_impl.NewCancellationUseCaseImpl(
+		cancellationRepository,
+		initiativeRepository,
+		initiativeHistoryRepository, // Registra no histórico
+		permRepository,
+	)
 
 	// 4. Inicializar Módulos HTTP
+	log.Println("🌐 Inicializando módulos HTTP...")
 	authModule := module_impl.NewAuthModule(authUseCase, settings)
 	permModule := module_impl.NewPermissionModule(permUseCase)
 	userCrudModule := module_impl.NewUserCrudModule(userCrudUseCase)
@@ -65,11 +77,13 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	healthModule := module_impl.NewHealthModule()
 
 	// 5. Registrar Rotas Públicas (sem autenticação)
+	log.Println("🔓 Registrando rotas públicas...")
 	publicRouter := router.PathPrefix("/api").Subrouter()
 	authModule.RegisterPublicRoutes(publicRouter)
 	healthModule.RegisterRoutes(publicRouter)
 
 	// 6. Registrar Rotas Privadas (com autenticação + permissões)
+	log.Println("🔒 Registrando rotas privadas...")
 	privateRouter := router.PathPrefix("/api/private").Subrouter()
 
 	// Middleware:  Autenticação
@@ -85,20 +99,24 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 	initiativeModule.RegisterRoutes(privateRouter)
 	commentModule.RegisterRoutes(privateRouter)
 
-	log.Println("✅ Setup concluído com sucesso")
+	log.Println("✅ Setup concluído com sucesso!")
 
 	return &SetupConfig{
-		DB:                   db,
-		Settings:             settings,
-		AuthRepository:       authRepository,
-		PermRepository:       permRepository,
-		InitiativeRepository: initiativeRepository,
-		CommentRepository:    commentRepository,
-		AuthUseCase:          authUseCase,
-		PermissionUseCase:    permUseCase,
-		UserCrudUseCase:      userCrudUseCase,
-		InitiativeUseCase:    initiativeUseCase,
-		CommentUseCase:       commentUseCase,
+		DB:                          db,
+		Settings:                    settings,
+		AuthRepository:              authRepository,
+		PermRepository:              permRepository,
+		InitiativeRepository:        initiativeRepository,
+		CommentRepository:           commentRepository,
+		InitiativeHistoryRepository: initiativeHistoryRepository,
+		CancellationRepository:      cancellationRepository,
+		AuthUseCase:                 authUseCase,
+		PermissionUseCase:           permUseCase,
+		UserCrudUseCase:             userCrudUseCase,
+		InitiativeUseCase:           initiativeUseCase,
+		CommentUseCase:              commentUseCase,
+		InitiativeHistoryUseCase:    initiativeHistoryUseCase,
+		CancellationUseCase:         cancellationUseCase,
 	}, nil
 }
 
