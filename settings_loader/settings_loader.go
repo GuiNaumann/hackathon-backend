@@ -15,6 +15,7 @@ type SettingsLoader struct {
 	Security SecurityConfig
 	SMTP     SMTPConfig
 	Storage  StorageConfig
+	AI       AIConfig // NOVO
 }
 
 type AppConfig struct {
@@ -57,10 +58,18 @@ type StorageConfig struct {
 	TempPath    string `toml:"temp_path"`
 }
 
+// NOVO: Configuração de IA
+type AIConfig struct {
+	GroqAPIKey     string  `toml:"groq_api_key"`
+	GroqModel      string  `toml:"groq_model"`
+	MaxTokens      int     `toml:"max_tokens"`
+	Temperature    float64 `toml:"temperature"`
+	RequestTimeout int     `toml:"request_timeout"` // em segundos
+}
+
 func NewSettingsLoader() *SettingsLoader {
 	var settings SettingsLoader
 
-	//configPath := "./settings.toml"
 	configPath, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
@@ -71,8 +80,11 @@ func NewSettingsLoader() *SettingsLoader {
 	}
 
 	if _, err := toml.DecodeFile(configPath, &settings); err != nil {
-		log.Fatalf("Erro ao carregar settings.toml: %v", err)
+		log.Fatalf("Erro ao carregar settings. toml: %v", err)
 	}
+
+	// Aplicar valores padrão para AI se não configurado
+	settings.applyDefaults()
 
 	// Validar campos obrigatórios
 	if err := settings.Validate(); err != nil {
@@ -81,6 +93,23 @@ func NewSettingsLoader() *SettingsLoader {
 
 	log.Println("✅ Configurações carregadas com sucesso")
 	return &settings
+}
+
+// NOVO: Aplicar valores padrão
+func (s *SettingsLoader) applyDefaults() {
+	// Defaults para AI
+	if s.AI.GroqModel == "" {
+		s.AI.GroqModel = "mixtral-8x7b-32768"
+	}
+	if s.AI.MaxTokens == 0 {
+		s.AI.MaxTokens = 2000
+	}
+	if s.AI.Temperature == 0 {
+		s.AI.Temperature = 0.7
+	}
+	if s.AI.RequestTimeout == 0 {
+		s.AI.RequestTimeout = 30
+	}
 }
 
 func (s *SettingsLoader) Validate() error {
@@ -94,11 +123,17 @@ func (s *SettingsLoader) Validate() error {
 		return fmt.Errorf("database.dbname é obrigatório")
 	}
 	if s.Security.CookieEncryptionKey == "" {
-		return fmt.Errorf("security.cookie_encryption_key é obrigatório")
+		return fmt.Errorf("security. cookie_encryption_key é obrigatório")
 	}
 	if s.Security.JWTSecret == "" {
 		return fmt.Errorf("security.jwt_secret é obrigatório")
 	}
+
+	// NOVO: Validar AI (apenas aviso, não obrigatório)
+	if s.AI.GroqAPIKey == "" {
+		log.Println("⚠️  Aviso: ai.groq_api_key não configurado - funcionalidades de IA estarão desabilitadas")
+	}
+
 	return nil
 }
 
@@ -119,4 +154,29 @@ func (s *SettingsLoader) GetAppPort() string {
 
 func (s *SettingsLoader) IsProduction() bool {
 	return s.App.Environment == "production"
+}
+
+// NOVO: Helpers para AI
+func (s *SettingsLoader) GetGroqAPIKey() string {
+	return s.AI.GroqAPIKey
+}
+
+func (s *SettingsLoader) GetGroqModel() string {
+	return s.AI.GroqModel
+}
+
+func (s *SettingsLoader) GetAIMaxTokens() int {
+	return s.AI.MaxTokens
+}
+
+func (s *SettingsLoader) GetAITemperature() float64 {
+	return s.AI.Temperature
+}
+
+func (s *SettingsLoader) GetAIRequestTimeout() int {
+	return s.AI.RequestTimeout
+}
+
+func (s *SettingsLoader) IsAIEnabled() bool {
+	return s.AI.GroqAPIKey != ""
 }

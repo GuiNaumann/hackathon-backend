@@ -154,3 +154,5 @@
 2025/12/16 09:53:19 setup.go:86: 🔒 Registrando rotas privadas...
 2025/12/16 09:53:19 setup.go:102: ✅ Setup concluído com sucesso!
 2025/12/16 09:53:19 main.go:81: 🚀 Servidor rodando na porta 8080
+2025/12/16 10:46:19 main.go:89: ✅ Servidor encerrado
+2025/12/16 10:46:19 setup.go:126: ✅ Conexão com banco de dados fechada
