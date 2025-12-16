@@ -89,6 +89,7 @@ func Setup(router *mux.Router, settings *settings_loader.SettingsLoader) (*Setup
 		initiativeRepository,
 		authRepository,
 		permRepository,
+		sectorRepository, // ADICIONAR
 	)
 
 	// 4. Inicializar Módulos HTTP

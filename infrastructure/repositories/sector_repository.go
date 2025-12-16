@@ -11,7 +11,7 @@ type SectorRepository interface {
 	Delete(ctx context.Context, sectorID int64) error
 	GetByID(ctx context.Context, sectorID int64) (*entities.Sector, error)
 	GetByName(ctx context.Context, name string) (*entities.Sector, error)
-	ListAll(ctx context.Context, activeOnly bool) ([]*entities.Sector, error)
+	ListAll(ctx context.Context, activeOnly bool) ([]*entities.Sector, error) // Já existe
 	ListWithUserCount(ctx context.Context, activeOnly bool) ([]*entities.SectorListResponse, error)
 	CountUsersBySector(ctx context.Context, sectorID int64) (int, error)
 }

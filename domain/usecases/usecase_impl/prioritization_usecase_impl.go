@@ -15,6 +15,7 @@ type PrioritizationUseCaseImpl struct {
 	initiativeRepo     repositories.InitiativeRepository
 	authRepo           repositories.AuthRepository
 	permRepo           repositories.PermissionRepository
+	sectorRepo         repositories.SectorRepository // NOVO
 }
 
 func NewPrioritizationUseCaseImpl(
@@ -22,12 +23,14 @@ func NewPrioritizationUseCaseImpl(
 	initiativeRepo repositories.InitiativeRepository,
 	authRepo repositories.AuthRepository,
 	permRepo repositories.PermissionRepository,
+	sectorRepo repositories.SectorRepository, // NOVO
 ) *PrioritizationUseCaseImpl {
 	return &PrioritizationUseCaseImpl{
 		prioritizationRepo: prioritizationRepo,
 		initiativeRepo:     initiativeRepo,
 		authRepo:           authRepo,
 		permRepo:           permRepo,
+		sectorRepo:         sectorRepo, // NOVO
 	}
 }
 
@@ -135,6 +138,11 @@ func (uc *PrioritizationUseCaseImpl) GetAllSectorsPrioritization(ctx context.Con
 		return nil, fmt.Errorf("erro ao buscar priorizações:  %w", err)
 	}
 
+	// NOVO: Se não existir nenhuma priorização, buscar todos os setores ativos e criar estrutura vazia
+	if len(prioritizations) == 0 {
+		return uc.buildEmptyPrioritizationForAllSectors(ctx, year)
+	}
+
 	// Construir response com iniciativas de cada setor
 	var sectors []*entities.PrioritizationWithInitiatives
 	for _, p := range prioritizations {
@@ -148,6 +156,106 @@ func (uc *PrioritizationUseCaseImpl) GetAllSectorsPrioritization(ctx context.Con
 	return &entities.AllSectorsPrioritization{
 		Year:    year,
 		Sectors: sectors,
+	}, nil
+}
+
+func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritizationForAllSectors(ctx context.Context, year int) (*entities.AllSectorsPrioritization, error) {
+	// Buscar todos os setores ativos
+	sectors, err := uc.sectorRepo.ListAll(ctx, true) // true = apenas ativos
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar setores:  %w", err)
+	}
+
+	var sectorsWithInitiatives []*entities.PrioritizationWithInitiatives
+
+	for _, sector := range sectors {
+		// Buscar iniciativas aprovadas do setor
+		filter := &entities.InitiativeFilter{
+			SectorID: &sector.ID,
+			Status:   entities.StatusApproved,
+		}
+
+		initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
+		if err != nil {
+			continue // Skip em caso de erro
+		}
+
+		var initiativesList []*entities.InitiativeListResponse
+		for _, initiative := range initiatives {
+			initiativesList = append(initiativesList, &entities.InitiativeListResponse{
+				ID:          initiative.ID,
+				Title:       initiative.Title,
+				Description: initiative.Description,
+				Status:      initiative.Status,
+				Type:        initiative.Type,
+				Priority:    initiative.Priority,
+				Sector:      initiative.Sector,
+				OwnerName:   initiative.OwnerName,
+				Date:        formatDate(initiative.CreatedAt),
+			})
+		}
+
+		sectorsWithInitiatives = append(sectorsWithInitiatives, &entities.PrioritizationWithInitiatives{
+			ID:          0, // Não existe ainda
+			SectorID:    sector.ID,
+			SectorName:  sector.Name,
+			Year:        year,
+			IsLocked:    false,
+			Initiatives: initiativesList,
+			CreatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+			UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	return &entities.AllSectorsPrioritization{
+		Year:    year,
+		Sectors: sectorsWithInitiatives,
+	}, nil
+}
+
+// Atualizar a função buildEmptyPrioritization para usar sectorRepo
+func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Context, sectorID int64, year int, userID int64) (*entities.PrioritizationWithInitiatives, error) {
+	// Buscar nome do setor
+	sector, err := uc.sectorRepo.GetByID(ctx, sectorID)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar setor: %w", err)
+	}
+
+	// Buscar todas as iniciativas aprovadas do setor
+	filter := &entities.InitiativeFilter{
+		SectorID: &sectorID,
+		Status:   entities.StatusApproved,
+	}
+
+	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	var initiativesList []*entities.InitiativeListResponse
+	for _, initiative := range initiatives {
+		initiativesList = append(initiativesList, &entities.InitiativeListResponse{
+			ID:          initiative.ID,
+			Title:       initiative.Title,
+			Description: initiative.Description,
+			Status:      initiative.Status,
+			Type:        initiative.Type,
+			Priority:    initiative.Priority,
+			Sector:      initiative.Sector,
+			OwnerName:   initiative.OwnerName,
+			Date:        formatDate(initiative.CreatedAt),
+		})
+	}
+
+	return &entities.PrioritizationWithInitiatives{
+		ID:          0, // Não existe ainda
+		SectorID:    sectorID,
+		SectorName:  sector.Name,
+		Year:        year,
+		IsLocked:    false,
+		Initiatives: initiativesList,
+		CreatedAt:   time.Now().Format("2006-01-02 15:04:05"),
+		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
 	}, nil
 }
 
@@ -291,45 +399,6 @@ func (uc *PrioritizationUseCaseImpl) buildPrioritizationWithInitiatives(ctx cont
 		CreatedByName:   p.CreatedByName,
 		CreatedAt:       p.CreatedAt.Format("2006-01-02 15:04:05"),
 		UpdatedAt:       p.UpdatedAt.Format("2006-01-02 15:04:05"),
-	}, nil
-}
-
-// Helper: Construir priorização vazia (quando não existe ainda)
-func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Context, sectorID int64, year int, userID int64) (*entities.PrioritizationWithInitiatives, error) {
-	// Buscar todas as iniciativas aprovadas do setor
-	filter := &entities.InitiativeFilter{
-		SectorID: &sectorID,
-		Status:   entities.StatusApproved,
-	}
-
-	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	var initiativesList []*entities.InitiativeListResponse
-	for _, initiative := range initiatives {
-		initiativesList = append(initiativesList, &entities.InitiativeListResponse{
-			ID:          initiative.ID,
-			Title:       initiative.Title,
-			Description: initiative.Description,
-			Status:      initiative.Status,
-			Type:        initiative.Type,
-			Priority:    initiative.Priority,
-			Sector:      initiative.Sector,
-			OwnerName:   initiative.OwnerName,
-			Date:        formatDate(initiative.CreatedAt),
-		})
-	}
-
-	return &entities.PrioritizationWithInitiatives{
-		ID:          0, // Não existe ainda
-		SectorID:    sectorID,
-		Year:        year,
-		IsLocked:    false,
-		Initiatives: initiativesList,
-		CreatedAt:   time.Now().Format("2006-01-02 15:04:05"),
-		UpdatedAt:   time.Now().Format("2006-01-02 15:04:05"),
 	}, nil
 }
 
