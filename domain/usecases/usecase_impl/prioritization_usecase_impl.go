@@ -169,10 +169,9 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritizationForAllSectors(ctx c
 	var sectorsWithInitiatives []*entities.PrioritizationWithInitiatives
 
 	for _, sector := range sectors {
-		// CORRIGIDO: Buscar iniciativas aprovadas filtrando pelo NOME do setor
+		// Buscar TODAS as iniciativas do setor (sem filtro de status)
 		filter := &entities.InitiativeFilter{
-			Sector: sector.Name, // USAR O NOME DO SETOR, NÃO O ID
-			Status: entities.StatusApproved,
+			Sector: sector.Name, // Filtrar pelo nome do setor
 		}
 
 		initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
@@ -180,19 +179,26 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritizationForAllSectors(ctx c
 			continue // Skip em caso de erro
 		}
 
+		// Filtrar apenas os status desejados:  Aprovada, Em Execução, Em Análise
 		var initiativesList []*entities.InitiativeListResponse
 		for _, initiative := range initiatives {
-			initiativesList = append(initiativesList, &entities.InitiativeListResponse{
-				ID:          initiative.ID,
-				Title:       initiative.Title,
-				Description: initiative.Description,
-				Status:      initiative.Status,
-				Type:        initiative.Type,
-				Priority:    initiative.Priority,
-				Sector:      initiative.Sector,
-				OwnerName:   initiative.OwnerName,
-				Date:        formatDate(initiative.CreatedAt),
-			})
+			// FILTRO: Apenas status permitidos
+			if initiative.Status == entities.StatusApproved ||
+				initiative.Status == entities.StatusInExecution ||
+				initiative.Status == entities.StatusInAnalysis {
+
+				initiativesList = append(initiativesList, &entities.InitiativeListResponse{
+					ID:          initiative.ID,
+					Title:       initiative.Title,
+					Description: initiative.Description,
+					Status:      initiative.Status,
+					Type:        initiative.Type,
+					Priority:    initiative.Priority,
+					Sector:      initiative.Sector,
+					OwnerName:   initiative.OwnerName,
+					Date:        formatDate(initiative.CreatedAt),
+				})
+			}
 		}
 
 		sectorsWithInitiatives = append(sectorsWithInitiatives, &entities.PrioritizationWithInitiatives{
@@ -221,10 +227,9 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Contex
 		return nil, fmt.Errorf("erro ao buscar setor:  %w", err)
 	}
 
-	// CORRIGIDO: Buscar iniciativas aprovadas filtrando pelo NOME do setor
+	// Buscar TODAS as iniciativas do setor
 	filter := &entities.InitiativeFilter{
-		Sector: sector.Name, // USAR O NOME DO SETOR
-		Status: entities.StatusApproved,
+		Sector: sector.Name,
 	}
 
 	initiatives, err := uc.initiativeRepo.ListAllWithCancellation(ctx, filter)
@@ -232,19 +237,26 @@ func (uc *PrioritizationUseCaseImpl) buildEmptyPrioritization(ctx context.Contex
 		return nil, err
 	}
 
+	// Filtrar apenas os status desejados
 	var initiativesList []*entities.InitiativeListResponse
 	for _, initiative := range initiatives {
-		initiativesList = append(initiativesList, &entities.InitiativeListResponse{
-			ID:          initiative.ID,
-			Title:       initiative.Title,
-			Description: initiative.Description,
-			Status:      initiative.Status,
-			Type:        initiative.Type,
-			Priority:    initiative.Priority,
-			Sector:      initiative.Sector,
-			OwnerName:   initiative.OwnerName,
-			Date:        formatDate(initiative.CreatedAt),
-		})
+		// FILTRO: Apenas status permitidos
+		if initiative.Status == entities.StatusApproved ||
+			initiative.Status == entities.StatusInExecution ||
+			initiative.Status == entities.StatusInAnalysis {
+
+			initiativesList = append(initiativesList, &entities.InitiativeListResponse{
+				ID:          initiative.ID,
+				Title:       initiative.Title,
+				Description: initiative.Description,
+				Status:      initiative.Status,
+				Type:        initiative.Type,
+				Priority:    initiative.Priority,
+				Sector:      initiative.Sector,
+				OwnerName:   initiative.OwnerName,
+				Date:        formatDate(initiative.CreatedAt),
+			})
+		}
 	}
 
 	return &entities.PrioritizationWithInitiatives{
