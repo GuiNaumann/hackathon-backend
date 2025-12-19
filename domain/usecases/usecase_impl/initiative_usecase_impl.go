@@ -416,6 +416,7 @@ func isValidStatus(s string) bool {
 		entities.StatusReturned,
 		entities.StatusRejected,
 		entities.StatusCompleted,
+		entities.StatusInHomolog,
 		entities.StatusCancelled,
 	}
 

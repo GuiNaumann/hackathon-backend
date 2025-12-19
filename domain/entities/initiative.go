@@ -88,6 +88,7 @@ const (
 	StatusInExecution = "Em Execução"
 	StatusReturned    = "Devolvida"
 	StatusRejected    = "Reprovada"
+	StatusInHomolog   = "Em Homologação"
 	StatusCompleted   = "Concluída"
 	StatusCancelled   = "Cancelada"
 )
