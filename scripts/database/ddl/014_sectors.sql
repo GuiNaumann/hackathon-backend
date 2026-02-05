@@ -33,6 +33,11 @@ CREATE INDEX IF NOT EXISTS idx_users_sector ON users(sector_id);
 COMMENT ON TABLE sectors IS 'Setores/Departamentos da empresa';
 COMMENT ON COLUMN users.sector_id IS 'Setor ao qual o usuário pertence';
 
+-- Atualizar usuário admin@hackathon.com para ter um setor (Tecnologia da Informação)
+UPDATE users 
+SET sector_id = (SELECT id FROM sectors WHERE name = 'Tecnologia da Informação')
+WHERE email = 'admin@hackathon.com';
+
 -- Permissões para CRUD de setores (Admin e Manager)
 INSERT INTO user_type_permissions (user_type_id, endpoint, method)
 SELECT ut.id, endpoint, method

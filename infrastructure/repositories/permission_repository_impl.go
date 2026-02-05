@@ -18,7 +18,7 @@ func NewPermissionRepositoryImpl(db *sql.DB) *PermissionRepositoryImpl {
 
 func (r *PermissionRepositoryImpl) GetUserTypes(ctx context.Context, userID int64) ([]*entities.UserType, error) {
 	query := `
-		SELECT ut.id, ut.name, ut.description, ut.created_at, ut.updated_at
+		SELECT ut.id, ut.name, ut.description, ut.created_at
 		FROM user_type ut
 		INNER JOIN type_user tu ON tu.user_type_id = ut.id
 		WHERE tu.user_id = $1
@@ -34,7 +34,7 @@ func (r *PermissionRepositoryImpl) GetUserTypes(ctx context.Context, userID int6
 	var userTypes []*entities.UserType
 	for rows.Next() {
 		ut := &entities.UserType{}
-		err := rows.Scan(&ut.ID, &ut.Name, &ut.Description, &ut.CreatedAt, &ut.UpdatedAt)
+		err := rows.Scan(&ut.ID, &ut.Name, &ut.Description, &ut.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (r *PermissionRepositoryImpl) GetAllUserTypes(ctx context.Context) ([]*enti
 	var userTypes []*entities.UserType
 	for rows.Next() {
 		ut := &entities.UserType{}
-		err := rows.Scan(&ut.ID, &ut.Name, &ut.Description, &ut.CreatedAt, &ut.UpdatedAt)
+		err := rows.Scan(&ut.ID, &ut.Name, &ut.Description, &ut.CreatedAt)
 		if err != nil {
 			return nil, err
 		}

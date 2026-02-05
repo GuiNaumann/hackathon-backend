@@ -97,7 +97,7 @@ func (m *InitiativeModule) ListInitiatives(w http.ResponseWriter, r *http.Reques
 	// NOVO: Passar userID para aplicar filtro de setor
 	initiatives, err := m.initiativeUseCase.ListInitiatives(r.Context(), filter, user.ID)
 	if err != nil {
-		http_error.InternalServerError(w, "Erro ao listar iniciativas")
+		http_error.InternalServerError(w, "Erro ao listar iniciativas: "+err.Error())
 		return
 	}
 

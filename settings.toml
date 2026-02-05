@@ -3,7 +3,7 @@ port = "8080"
 environment = "development"
 
 [database]
-host = "localhost"
+host = "db"
 port = "5432"
 user = "hackathon_tic"
 password = "hackathon2137689712"

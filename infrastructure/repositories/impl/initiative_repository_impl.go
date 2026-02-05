@@ -118,11 +118,11 @@ func (r *InitiativeRepositoryImpl) GetByID(ctx context.Context, initiativeID int
 func (r *InitiativeRepositoryImpl) GetByIDWithCancellation(ctx context.Context, initiativeID int64) (*entities.Initiative, error) {
 	query := `
 		SELECT i.id, i. title, i.description, i. benefits, i.status, i. type, i.priority, i. sector, 
-		       i. owner_id, u.name as owner_name, i.deadline, i.created_at, i. updated_at,
+		       i.owner_id, u.name as owner_name, i.deadline, i.created_at, i. updated_at,
 		       cr.id, cr.status, cr.requested_by_user_id, u2.name, cr.reason, 
 		       cr.reviewed_by_user_id, u3.name, cr.review_reason, cr.created_at, cr.reviewed_at
 		FROM initiatives i
-		INNER JOIN users u ON u.id = i. owner_id
+		INNER JOIN users u ON u.id = i.owner_id
 		LEFT JOIN initiative_cancellation_requests cr ON cr.initiative_id = i.id 
 		    AND cr.status IN ('Pendente', 'Aprovada', 'Reprovada')
 		LEFT JOIN users u2 ON u2.id = cr.requested_by_user_id
@@ -201,9 +201,9 @@ func (r *InitiativeRepositoryImpl) GetByIDWithCancellation(ctx context.Context, 
 func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities.InitiativeFilter) ([]*entities.Initiative, error) {
 	query := `
 		SELECT i.id, i.title, i.description, i.benefits, i.status, i.type, i.priority, i.sector, 
-		       i.owner_id, u. name as owner_name, i. deadline, i.created_at, i.updated_at
+		       i.owner_id, u.name as owner_name, i.deadline, i.created_at, i.updated_at
 		FROM initiatives i
-		INNER JOIN users u ON u.id = i. owner_id
+		INNER JOIN users u ON u.id = i.owner_id
 		WHERE 1=1
 	`
 
@@ -212,13 +212,13 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 
 	if filter != nil {
 		if filter.Search != "" {
-			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i. description) LIKE $%d)", argCount, argCount)
+			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i.description) LIKE $%d)", argCount, argCount)
 			args = append(args, "%"+strings.ToLower(filter.Search)+"%")
 			argCount++
 		}
 
 		if filter.Status != "" {
-			query += fmt.Sprintf(" AND i. status = $%d", argCount)
+			query += fmt.Sprintf(" AND i.status = $%d", argCount)
 			args = append(args, filter.Status)
 			argCount++
 		}
@@ -236,7 +236,7 @@ func (r *InitiativeRepositoryImpl) ListAll(ctx context.Context, filter *entities
 		}
 
 		if filter.Priority != "" {
-			query += fmt.Sprintf(" AND i. priority = $%d", argCount)
+			query += fmt.Sprintf(" AND i.priority = $%d", argCount)
 			args = append(args, filter.Priority)
 			argCount++
 		}
@@ -304,13 +304,13 @@ func (r *InitiativeRepositoryImpl) ListAllWithCancellation(ctx context.Context, 
 
 	if filter != nil {
 		if filter.Search != "" {
-			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i. description) LIKE $%d)", argCount, argCount)
+			query += fmt.Sprintf(" AND (LOWER(i.title) LIKE $%d OR LOWER(i.description) LIKE $%d)", argCount, argCount)
 			args = append(args, "%"+strings.ToLower(filter.Search)+"%")
 			argCount++
 		}
 
 		if filter.Status != "" {
-			query += fmt.Sprintf(" AND i. status = $%d", argCount)
+			query += fmt.Sprintf(" AND i.status = $%d", argCount)
 			args = append(args, filter.Status)
 			argCount++
 		}
