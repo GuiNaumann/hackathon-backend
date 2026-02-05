@@ -86,6 +86,9 @@ func NewSettingsLoader() *SettingsLoader {
 	// Aplicar valores padrão para AI se não configurado
 	settings.applyDefaults()
 
+	// Aplicar variáveis de ambiente (sobrescrevem settings.toml)
+	settings.applyEnvVars()
+
 	// Validar campos obrigatórios
 	if err := settings.Validate(); err != nil {
 		log.Fatalf("Configuração inválida: %v", err)
@@ -109,6 +112,14 @@ func (s *SettingsLoader) applyDefaults() {
 	}
 	if s.AI.RequestTimeout == 0 {
 		s.AI.RequestTimeout = 30
+	}
+}
+
+// Aplicar variáveis de ambiente (sobrescrevem settings.toml)
+func (s *SettingsLoader) applyEnvVars() {
+	if dbHost := os.Getenv("DATABASE_HOST"); dbHost != "" {
+		s.Database.Host = dbHost
+		log.Printf("📝 DATABASE_HOST sobrescrito pela variável de ambiente: %s", dbHost)
 	}
 }
 

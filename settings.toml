@@ -3,7 +3,7 @@ port = "8080"
 environment = "development"
 
 [database]
-host = "ec2-3-144-46-118.us-east-2.compute.amazonaws.com"
+host = "localhost"
 port = "5432"
 user = "hackathon_tic"
 password = "hackathon2137689712"

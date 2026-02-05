@@ -11,12 +11,24 @@ services:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackathon_tic -d hackathon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   backend:
     image: hackathon:latest
     container_name: backend
     restart: always
     ports:
       - "8080:8080"
+    volumes:
+      - ./settings.toml:/app/settings.toml
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_HOST=db
 volumes:
   pg_data:
 
